@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1e3a5f;
+  --primary: #5ba8e0;
+  --primary-dark: #4a90d9;
+  --nav-bg: #5ba8e0;
+  --card-bg: #d4e8f5;
+  --btn-primary: #1e3a5f;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), "Noto Sans Thai", system-ui, sans-serif;
+}
+
+/* Leaflet popups — light theme */
+.leaflet-popup-content-wrapper {
+  background: #ffffff;
+  color: #1e3a5f;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+.leaflet-popup-tip {
+  background: #ffffff;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
