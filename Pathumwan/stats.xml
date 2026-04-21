@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2026-04-21T14:09:48.482408+07:00 by Eclipse SUMO sumo 1.26.0
+<sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.net.xml"/>
+        <route-files value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.passenger.rou.xml,C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.motorcycle.rou.xml,C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.truck.rou.xml,C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.bus.rou.xml"/>
+        <additional-files value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.poly.xml,C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\output.add.xml"/>
+    </input>
+
+    <output>
+        <tripinfo-output value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\tripinfos.xml"/>
+        <statistic-output value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\stats.xml"/>
+    </output>
+
+    <time>
+        <begin value="0"/>
+        <end value="3600"/>
+        <step-length value="1.0"/>
+    </time>
+
+    <processing>
+        <ignore-route-errors value="true"/>
+        <time-to-teleport value="300"/>
+        <time-to-teleport.highways value="0"/>
+        <tls.actuated.jam-threshold value="30"/>
+    </processing>
+
+    <routing>
+        <device.rerouting.adaptation-steps value="18"/>
+        <device.rerouting.adaptation-interval value="10"/>
+    </routing>
+
+    <report>
+        <verbose value="true"/>
+        <no-warnings value="true"/>
+        <duration-log.statistics value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="54324"/>
+    </traci_server>
+
+    <gui_only>
+        <gui-settings-file value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.view.xml"/>
+        <quit-on-end value="false"/>
+        <start value="true"/>
+        <delay value="50"/>
+    </gui_only>
+
+</sumoConfiguration>
+-->
+
+<statistics xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/statistic_file.xsd">
+</statistics>
