@@ -1,0 +1,44 @@
+{
+	"roads": [
+		{"code": "RAMA1", "name_th": "ถนนพระราม 1", "free_flow_speed_kmh": 50},
+		{"code": "RAMA4", "name_th": "ถนนพระราม 4", "free_flow_speed_kmh": 50},
+		{"code": "PHAYATHAI", "name_th": "ถนนพญาไท", "free_flow_speed_kmh": 50},
+		{"code": "RATCHADAMRI", "name_th": "ถนนราชดำริ", "free_flow_speed_kmh": 50},
+		{"code": "PLOENCHIT", "name_th": "ถนนเพลินจิต", "free_flow_speed_kmh": 50},
+		{"code": "BANTHATTHONG", "name_th": "ถนนบรรทัดทอง", "free_flow_speed_kmh": 50},
+		{"code": "CHARUMUEANG", "name_th": "ถนนจารุเมือง", "free_flow_speed_kmh": 50},
+		{"code": "WITTHAYU", "name_th": "ถนนวิทยุ", "free_flow_speed_kmh": 50},
+		{"code": "HENRIDUNANT", "name_th": "ถนนอังรีดูนังต์", "free_flow_speed_kmh": 50},
+		{"code": "SARASIN", "name_th": "ถนนสารสิน", "free_flow_speed_kmh": 50}
+	],
+	"cameras": [
+		{"id": "TFF01", "name": "CCTV แยกปทุมวัน (ถ.พระราม 1/พญาไท)", "lat": 13.7466, "lng": 100.5291, "road": "RAMA1", "junction": "pathumwan"},
+		{"id": "TFF02", "name": "CCTV แยกราชประสงค์ (ถ.ราชดำริ/เพลินจิต)", "lat": 13.7461, "lng": 100.5399, "road": "RATCHADAMRI", "junction": "ratchaprasong"},
+		{"id": "TFF03", "name": "CCTV แยกอังรีดูนังต์ (ถ.พระราม 1/อังรีดูนังต์)", "lat": 13.7310, "lng": 100.5319, "road": "HENRIDUNANT", "junction": "henridunant"},
+		{"id": "TFF04", "name": "CCTV แยกเพลินจิต-วิทยุ (ถ.เพลินจิต/วิทยุ)", "lat": 13.7439, "lng": 100.5470, "road": "WITTHAYU", "junction": "ploenchit_witthayu"},
+		{"id": "TFF05", "name": "CCTV แยกชิดลม (ถ.เพลินจิต ฝั่ง BTS ชิดลม)", "lat": 13.7445, "lng": 100.5430, "road": "PLOENCHIT", "junction": "chidlom"},
+		{"id": "TFF06", "name": "CCTV แยกสามย่าน (ถ.พระราม 4/พญาไท)", "lat": 13.7332, "lng": 100.5291, "road": "RAMA4", "junction": "samyan"},
+		{"id": "TFF07", "name": "CCTV แยกบรรทัดทอง (ถ.บรรทัดทอง/จารุเมือง)", "lat": 13.7395, "lng": 100.5265, "road": "BANTHATTHONG", "junction": "banthatthong"},
+		{"id": "TFF08", "name": "CCTV ถ.พระราม 1 สยามสแควร์ (หน้าสยามฯ)", "lat": 13.7454, "lng": 100.5344, "road": "RAMA1", "junction": "siam"},
+		{"id": "TFF09", "name": "CCTV ถ.เพลินจิต (หน้า BTS ชิดลม ฝั่งใต้)", "lat": 13.7441, "lng": 100.5443, "road": "PLOENCHIT", "junction": "chidlom_s"},
+		{"id": "TFF10", "name": "CCTV แยกราชดำริ-สีลม (ถ.ราชดำริ/สีลม)", "lat": 13.7320, "lng": 100.5365, "road": "RATCHADAMRI", "junction": "ratchadamri_silom"},
+		{"id": "TFF11", "name": "CCTV ถ.พระราม 4 สามย่าน (หน้า MRT สามย่าน)", "lat": 13.7328, "lng": 100.5285, "road": "RAMA4", "junction": "mrt_samyan"},
+		{"id": "TFF12", "name": "CCTV ถ.พญาไท (หน้า BTS สยาม ฝั่งเหนือ)", "lat": 13.7470, "lng": 100.5290, "road": "PHAYATHAI", "junction": "bts_siam_n"},
+		{"id": "TFF13", "name": "CCTV ถ.จารุเมือง (หน้าสถานีหัวลำโพง)", "lat": 13.7265, "lng": 100.5222, "road": "CHARUMUEANG", "junction": "hualamphong", "status": "inactive"}
+	],
+	"junctions": [
+		{"id": "pathumwan", "name_th": "แยกปทุมวัน", "sumo_tls_id": "", "lat": 13.7466, "lng": 100.5291, "roads": ["RAMA1", "PHAYATHAI"]},
+		{"id": "ratchaprasong", "name_th": "แยกราชประสงค์", "sumo_tls_id": "", "lat": 13.7461, "lng": 100.5399, "roads": ["RATCHADAMRI", "PLOENCHIT"]},
+		{"id": "henridunant", "name_th": "แยกอังรีดูนังต์", "sumo_tls_id": "", "lat": 13.7310, "lng": 100.5319, "roads": ["RAMA1", "HENRIDUNANT"]},
+		{"id": "ploenchit_witthayu", "name_th": "แยกเพลินจิต-วิทยุ", "sumo_tls_id": "", "lat": 13.7439, "lng": 100.5470, "roads": ["PLOENCHIT", "WITTHAYU"]},
+		{"id": "chidlom", "name_th": "แยกชิดลม", "sumo_tls_id": "", "lat": 13.7445, "lng": 100.5430, "roads": ["PLOENCHIT"]},
+		{"id": "samyan", "name_th": "แยกสามย่าน", "sumo_tls_id": "", "lat": 13.7332, "lng": 100.5291, "roads": ["RAMA4", "PHAYATHAI"]},
+		{"id": "banthatthong", "name_th": "แยกบรรทัดทอง", "sumo_tls_id": "", "lat": 13.7395, "lng": 100.5265, "roads": ["BANTHATTHONG", "CHARUMUEANG"]},
+		{"id": "siam", "name_th": "แยกสยาม", "sumo_tls_id": "", "lat": 13.7454, "lng": 100.5344, "roads": ["RAMA1"]},
+		{"id": "ratchadamri_silom", "name_th": "แยกราชดำริ-สีลม", "sumo_tls_id": "", "lat": 13.7320, "lng": 100.5365, "roads": ["RATCHADAMRI"]},
+		{"id": "sarasin", "name_th": "แยกสารสิน", "sumo_tls_id": "", "lat": 13.7411, "lng": 100.5395, "roads": ["SARASIN", "RATCHADAMRI"]},
+		{"id": "hualamphong", "name_th": "แยกหัวลำโพง", "sumo_tls_id": "", "lat": 13.7265, "lng": 100.5222, "roads": ["RAMA4", "CHARUMUEANG"]},
+		{"id": "rajthewi", "name_th": "แยกราชเทวี", "sumo_tls_id": "", "lat": 13.7530, "lng": 100.5320, "roads": ["PHAYATHAI", "PHETCHABURI"]},
+		{"id": "phayathai", "name_th": "แยกพญาไท", "sumo_tls_id": "", "lat": 13.7565, "lng": 100.5335, "roads": ["PHAYATHAI"]}
+	]
+}

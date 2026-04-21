@@ -1,0 +1,35 @@
+PostgreSQL initialized - all tables ready
+  ⚠ Camera network sync skipped: (raised as a result of Query-invoked autoflush; consider using a session.no_autoflush block if this flush is occurring prematurely)
+(psycopg2.errors.ForeignKeyViolation) update or delete on table "cameras" violates foreign key constraint "approaches_camera_id_fkey" on table "approaches"
+DETAIL:  Key (camera_id)=(TFF02) is still referenced from table "approaches".
+
+[SQL: UPDATE cameras SET camera_id=%(camera_id)s, name=%(name)s, road=%(road)s, road_id=%(road_id)s, lat=%(lat)s, lng=%(lng)s, junction=%(junction)s WHERE cameras.id = %(cameras_id)s]
+[parameters: {'camera_id': 'TLS_6167892092_b52242', 'name': 'CCTV ถนนเพลินจิต', 'road': 'ถนนเพลินจิต', 'road_id': 'PLOENCHIT', 'lat': 13.744572, 'lng': 100.540597, 'junction': 'ถนนเพลินจิต', 'cameras_id': 2}]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+============================================================
+  TraffixFlow — AI Traffic Management System
+  Database: postgresql://neondb_owner:npg_rAP6Ub8efptN@ep-lively-cloud-a...
+============================================================
+
+📦 Initializing database and routes...
+🚀 Starting SUMO simulation...
+Starting SUMO (headless) with calibrated config...
+  ✓ Started Simulation thread
+  ✓ Started Camera Capture thread
+  ✓ Started Detection thread
+  ✓ Started Index Calc thread
+  ✓ Started Aggregation thread
+  ✓ Started Daily Stats thread
+
+🌐 Starting Flask on 0.0.0.0:5000
+✓ Hourly vehicle count aggregation started
+✓ Daily stats aggregation + retention loop started
+ * Serving Flask app 'app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.136:5000
+Press CTRL+C to quit
+127.0.0.1 - - [19/Apr/2026 17:49:11] "GET /api/health HTTP/1.1" 200 -
+127.0.0.1 - - [19/Apr/2026 17:49:15] "GET /api/cameras/ HTTP/1.1" 200 -

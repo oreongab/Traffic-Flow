@@ -1,0 +1,233 @@
+// Pathumwan persisted schema — updated 2026-04-21
+// Engine: Neon PostgreSQL (prod) / SQLite (dev fallback)
+// 16 real tables. CameraStream/CameraCalibration/CameraZone are Python aliases only.
+//
+// Retention (enforced by backend/services/daily_stats.py::purge_old_raw_data()):
+//   traffic_detections  -> 7 days
+//   traffic_index       -> 30 days
+//   road_density        -> 30 days
+//   signal_states       -> 30 days
+//   system_logs         -> 30 days
+//   ai_decisions        -> 30 days
+//   everything else     -> kept
+
+Table users {
+  id int [pk, increment]
+  username varchar(100) [not null, unique]
+  email varchar(255) [not null, unique]
+  password_hash text [not null]
+  role varchar(20) [not null, default: 'user']
+  is_active boolean [not null, default: true]
+  created_at datetime
+  updated_at datetime
+}
+
+Table roads {
+  road_id varchar(100) [pk]
+  road_name varchar(255) [not null]
+  free_flow_speed_kmh float [default: 50]
+  created_at datetime
+  updated_at datetime
+}
+
+Table junctions {
+  junction_id varchar(100) [pk]
+  junction_name varchar(255)
+  sumo_tls_id varchar(100) [unique]
+  lat float
+  lng float
+  created_at datetime
+  updated_at datetime
+}
+
+Table cameras {
+  id int [pk, increment]
+  camera_id varchar(100) [not null, unique, note: 'business key']
+  name varchar(255) [not null]
+  road varchar(255) [note: 'human-readable road label']
+  road_id varchar(100) [note: 'FK to roads']
+  lat float [not null]
+  lng float [not null]
+  junction varchar(255) [note: 'human-readable junction label']
+  junction_id varchar(100) [note: 'FK to junctions']
+  sumo_tls_id varchar(100)
+  status varchar(20) [default: 'active']
+  created_at datetime
+  // merged from camera_streams
+  stream_url text
+  stream_type varchar(20) [default: 'sim', note: 'sim | rtsp | http']
+  stream_enabled boolean [default: true]
+  fps_target int [default: 8]
+  last_frame_at datetime
+  stream_status varchar(20) [default: 'offline', note: 'online | offline | error']
+  // merged from camera_calibrations
+  calibration_data json [note: '{image_width, image_height, homography_matrix, anchor_lat, anchor_lng, bearing_deg, pixels_per_meter}']
+  // merged from camera_zones
+  zones json [note: '[{zone_id, junction_id, approach_id, road_id, zone_type, polygon_json, line_json, enabled}]']
+}
+
+Table approaches {
+  id int [pk, increment]
+  junction_id varchar(100) [not null, note: 'FK to junctions']
+  approach_id varchar(100) [not null]
+  road_id varchar(100) [note: 'FK to roads']
+  camera_id varchar(100) [note: 'FK to cameras.camera_id']
+  approach_name varchar(255)
+  enabled boolean [not null, default: true]
+  created_at datetime
+  updated_at datetime
+
+  indexes {
+    (junction_id, approach_id) [unique, name: 'uq_approaches_junction_approach']
+    (junction_id, road_id) [name: 'ix_approach_junction_road']
+  }
+}
+
+Table traffic_detections {
+  id int [pk, increment]
+  camera_id varchar(100) [not null, note: 'FK to cameras.camera_id']
+  timestamp datetime
+  vehicle_counts json [note: '{car, motorcycle, bus, truck, total}']
+  edge_id varchar(100)
+  confidence_avg float
+
+  indexes {
+    (camera_id, timestamp) [name: 'ix_detection_cam_ts']
+  }
+}
+
+Table traffic_index {
+  id int [pk, increment]
+  timestamp datetime
+  area varchar(100) [not null]
+  index_value float [not null]
+  roads json [note: '[{road_name, road_id, index, vehicle_count, avg_speed, ...}]']
+
+  indexes {
+    (area, timestamp) [name: 'ix_ti_area_ts']
+  }
+}
+
+Table road_density {
+  id int [pk, increment]
+  road_name varchar(255) [not null]
+  road_id varchar(100) [not null, note: 'FK to roads']
+  timestamp datetime
+  vehicle_count int
+  density_level varchar(50)
+  avg_speed float
+  travel_time float
+  vc_ratio float
+
+  indexes {
+    (road_id, timestamp) [name: 'ix_rd_road_ts']
+  }
+}
+
+Table signal_timings {
+  id int [pk, increment]
+  junction_id varchar(100) [not null, note: 'FK to junctions']
+  timestamp datetime
+  phase_durations json
+  mode varchar(20) [default: 'ai']
+  decided_by varchar(100) [default: 'system']
+}
+
+Table signal_controllers {
+  id int [pk, increment]
+  junction_id varchar(100) [not null, note: 'FK to junctions']
+  controller_type varchar(30) [default: 'mock']
+  endpoint text
+  auth_config json
+  enabled boolean [not null, default: true]
+  phase_map json
+  created_at datetime
+  updated_at datetime
+}
+
+Table signal_states {
+  id int [pk, increment]
+  junction_id varchar(100) [not null, note: 'FK to junctions']
+  timestamp datetime
+  current_phase int
+  phase_count int
+  phase_duration float
+  next_switch_eta float
+  source varchar(20) [default: 'sim', note: 'sim | hardware']
+  raw_state json
+
+  indexes {
+    (junction_id, timestamp) [name: 'ix_signal_state_junction_ts']
+  }
+}
+
+Table ai_decisions {
+  id int [pk, increment]
+  junction_id varchar(100) [not null, note: 'FK to junctions']
+  timestamp datetime
+  input_data json
+  output json
+  reward float
+  model_version varchar(50)
+}
+
+Table historical_stats {
+  id int [pk, increment]
+  date varchar(20) [not null]
+  year int [not null]
+  total_vehicles int
+  peak_index float
+  peak_time varchar(10)
+  avg_index float
+  road_rankings json
+}
+
+Table system_logs {
+  id int [pk, increment]
+  timestamp datetime
+  event_type varchar(100) [not null]
+  details json
+}
+
+Table hourly_vehicle_counts {
+  id int [pk, increment]
+  date varchar(10) [not null]
+  hour varchar(5) [not null]
+  road_id varchar(100) [not null, note: 'FK to roads']
+  road_name varchar(255)
+  car int
+  motorcycle int
+  bus int
+  truck int
+  total int
+  avg_speed float
+  density_index float
+  source varchar(20) [default: 'yolo', note: 'yolo | sumo']
+  created_at datetime
+
+  indexes {
+    (date, road_id) [name: 'ix_hvc_date_road']
+    (date, hour) [name: 'ix_hvc_date_hour']
+  }
+}
+
+Table runtime_config {
+  id int [pk, increment]
+  config_key varchar(100) [not null, unique]
+  config_value text
+  updated_at datetime
+}
+
+// Foreign key references
+Ref: cameras.road_id > roads.road_id [delete: set null]
+Ref: cameras.junction_id > junctions.junction_id [delete: set null]
+Ref: approaches.junction_id > junctions.junction_id [delete: cascade]
+Ref: approaches.road_id > roads.road_id [delete: set null]
+Ref: approaches.camera_id > cameras.camera_id [delete: set null]
+Ref: traffic_detections.camera_id > cameras.camera_id [delete: cascade]
+Ref: road_density.road_id > roads.road_id
+Ref: signal_timings.junction_id > junctions.junction_id
+Ref: signal_controllers.junction_id > junctions.junction_id
+Ref: signal_states.junction_id > junctions.junction_id
+Ref: ai_decisions.junction_id > junctions.junction_id
+Ref: hourly_vehicle_counts.road_id > roads.road_id

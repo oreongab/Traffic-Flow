@@ -1,0 +1,940 @@
+{
+  "version": 1,
+  "cameras": [
+    {
+      "camera_id": "TFF01",
+      "camera_name": "CCTV แยก ถนนพญาไท / ซอยจุฬาลงกรณ์ 62",
+      "road_id": "PHAYATHAI",
+      "junction_id": "cluster_11134063759_11134063760_11134063800_12926920660_#4more",
+      "status": "active",
+      "calibration": {
+        "image_width": 1280,
+        "image_height": 720,
+        "homography_matrix": [],
+        "anchor_lat": 13.7466,
+        "anchor_lng": 100.5291,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TFF02",
+      "camera_name": "CCTV ถนนเพลินจิต",
+      "road_id": "PLOENCHIT",
+      "junction_id": "6167892092",
+      "status": "active",
+      "calibration": {
+        "image_width": 1280,
+        "image_height": 720,
+        "homography_matrix": [],
+        "anchor_lat": 13.7461,
+        "anchor_lng": 100.5399,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TFF03",
+      "camera_name": "CCTV แยกอังรีดูนังต์ (ถ.พระราม 1/อังรีดูนังต์)",
+      "road_id": "HENRIDUNANT",
+      "junction_id": "11159437081",
+      "status": "active",
+      "calibration": {
+        "image_width": 1280,
+        "image_height": 720,
+        "homography_matrix": [],
+        "anchor_lat": 13.731,
+        "anchor_lng": 100.5319,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TFF05",
+      "camera_name": "CCTV แยกชิดลม (ถ.เพลินจิต ฝั่ง BTS ชิดลม)",
+      "road_id": "PLOENCHIT",
+      "junction_id": "cluster_2419740242_275515928",
+      "status": "active",
+      "calibration": {
+        "image_width": 1280,
+        "image_height": 720,
+        "homography_matrix": [],
+        "anchor_lat": 13.7445,
+        "anchor_lng": 100.543,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TFF06",
+      "camera_name": "CCTV แยกสามย่าน (ถ.พระราม 4/พญาไท)",
+      "road_id": "RAMA4",
+      "junction_id": "6233676318",
+      "status": "active",
+      "calibration": {
+        "image_width": 1280,
+        "image_height": 720,
+        "homography_matrix": [],
+        "anchor_lat": 13.7332,
+        "anchor_lng": 100.5291,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TFF07",
+      "camera_name": "CCTV แยก ถนนพญาไท / ถนนจุฬาลงกรณ์",
+      "road_id": "PHAYATHAI",
+      "junction_id": "cluster_2106360908_2666981076_358216582_358216616",
+      "status": "active",
+      "calibration": {
+        "image_width": 1280,
+        "image_height": 720,
+        "homography_matrix": [],
+        "anchor_lat": 13.7395,
+        "anchor_lng": 100.5265,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TFF09",
+      "camera_name": "CCTV ถ.เพลินจิต (หน้า BTS ชิดลม ฝั่งใต้)",
+      "road_id": "PLOENCHIT",
+      "junction_id": "2419740285",
+      "status": "active",
+      "calibration": {
+        "image_width": 1280,
+        "image_height": 720,
+        "homography_matrix": [],
+        "anchor_lat": 13.7441,
+        "anchor_lng": 100.5443,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TFF10",
+      "camera_name": "CCTV ถนนราชดำริ",
+      "road_id": "RATCHADAMRI",
+      "junction_id": "cluster_11854065403_1698343017_7312316667",
+      "status": "active",
+      "calibration": {
+        "image_width": 1280,
+        "image_height": 720,
+        "homography_matrix": [],
+        "anchor_lat": 13.732,
+        "anchor_lng": 100.5365,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TFF11",
+      "camera_name": "CCTV ถ.พระราม 4 สามย่าน (หน้า MRT สามย่าน)",
+      "road_id": "RAMA4",
+      "junction_id": "7698899727",
+      "status": "active",
+      "calibration": {
+        "image_width": 1280,
+        "image_height": 720,
+        "homography_matrix": [],
+        "anchor_lat": 13.7328,
+        "anchor_lng": 100.5285,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_10206849027_a30efd",
+      "camera_name": "CCTV ถนนบรรทัดทอง",
+      "road_id": "BANTHATTHONG",
+      "junction_id": "10206849027",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_11155124873_48a308",
+      "camera_name": "CCTV ถนนนเรศ",
+      "road_id": "ถนนนเรศ",
+      "junction_id": "11155124873",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_11159437085_c62926",
+      "camera_name": "CCTV ถนนพระรามที่ 4",
+      "road_id": "ถนนพระรามที่ 4",
+      "junction_id": "11159437085",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_11159437086_b54e93",
+      "camera_name": "CCTV ถนนพระรามที่ 4",
+      "road_id": "ถนนพระรามที่ 4",
+      "junction_id": "11159437086",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_11304894033_801d3e",
+      "camera_name": "CCTV ถนนสารสิน",
+      "road_id": "SARASIN",
+      "junction_id": "11304894033",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_11854065404_f6a727",
+      "camera_name": "CCTV ถนนราชดำริ",
+      "road_id": "RATCHADAMRI",
+      "junction_id": "11854065404",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_11911901809_ba476d",
+      "camera_name": "CCTV ถนนราชดำริ",
+      "road_id": "RATCHADAMRI",
+      "junction_id": "11911901809",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_13359921918_ca3dfa",
+      "camera_name": "CCTV ซอยสุขุมวิท 3",
+      "road_id": "ซอยสุขุมวิท 3",
+      "junction_id": "13359921918",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_13363161958_1c8c50",
+      "camera_name": "CCTV ถนนสุขุมวิท",
+      "road_id": "ถนนสุขุมวิท",
+      "junction_id": "13363161958",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_13363161959_99b540",
+      "camera_name": "CCTV ถนนสุขุมวิท",
+      "road_id": "ถนนสุขุมวิท",
+      "junction_id": "13363161959",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_1692045529_fab1e3",
+      "camera_name": "CCTV สายแม่น้ำ",
+      "road_id": "สายแม่น้ำ",
+      "junction_id": "1692045529",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_3246215069_f55f51",
+      "camera_name": "CCTV แยก ถนนสุขุมวิท / ซอยสุขุมวิท 3",
+      "road_id": "ถนนสุขุมวิท",
+      "junction_id": "3246215069",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_6167892089_305408",
+      "camera_name": "CCTV ถนนราชดำริ",
+      "road_id": "RATCHADAMRI",
+      "junction_id": "6167892089",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_6167892090_172a8b",
+      "camera_name": "CCTV ถนนเพลินจิต",
+      "road_id": "PLOENCHIT",
+      "junction_id": "6167892090",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_6167892091_cf342c",
+      "camera_name": "CCTV ถนนราชดำริ",
+      "road_id": "RATCHADAMRI",
+      "junction_id": "6167892091",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_7081445903_6b944a",
+      "camera_name": "CCTV ถนนพระรามที่ 4",
+      "road_id": "ถนนพระรามที่ 4",
+      "junction_id": "7081445903",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_8044172995_448149",
+      "camera_name": "CCTV ถนนราชดำริ",
+      "road_id": "RATCHADAMRI",
+      "junction_id": "8044172995",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_10885862253_10885862256__9b1a3b",
+      "camera_name": "CCTV แยก ถนนบรรทัดทอง / ถนนพระรามที่ 1",
+      "road_id": "BANTHATTHONG",
+      "junction_id": "cluster_10885862253_10885862256_280205849_373101188_#6more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11013798457_11152447522__67cc3d",
+      "camera_name": "CCTV แยก ถนนมหาเศรษฐ์ / ถนนสี่พระยา",
+      "road_id": "ถนนมหาเศรษฐ์",
+      "junction_id": "cluster_11013798457_11152447522_11152447523_280761434_#1more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11042518890_11152446123__0bc813",
+      "camera_name": "CCTV แยก ซอยแก้วฟ้า / ถนนสี่พระยา",
+      "road_id": "ซอยแก้วฟ้า",
+      "junction_id": "cluster_11042518890_11152446123_11152446124_11155124860_#2more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11133968865_11133968867__cdd592",
+      "camera_name": "CCTV แยก ถนนทรัพย์ / ถนนสี่พระยา",
+      "road_id": "ถนนทรัพย์",
+      "junction_id": "cluster_11133968865_11133968867_11133968898_11133968899_#1more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11140997525_11140997534__e07881",
+      "camera_name": "CCTV แยก ถนนสุรวงศ์ / ซอยอนุมานราชธน",
+      "road_id": "ถนนสุรวงศ์",
+      "junction_id": "cluster_11140997525_11140997534_11140997537_1685054961",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11155124849_11159437208__9f429a",
+      "camera_name": "CCTV แยก ถนนสุรวงศ์ / ถนนเดโช",
+      "road_id": "ถนนสุรวงศ์",
+      "junction_id": "cluster_11155124849_11159437208_11159437210_11159437213_#1more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11155124862_11159437123__6cabba",
+      "camera_name": "CCTV ถนนสุรวงศ์",
+      "road_id": "ถนนสุรวงศ์",
+      "junction_id": "cluster_11155124862_11159437123_11159437216_1685054762_#1more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11159437019_11159437020__3e1039",
+      "camera_name": "CCTV แยก ถนนสุรวงศ์ / ถนนนราธิวาสราชนครินทร์",
+      "road_id": "ถนนสุรวงศ์",
+      "junction_id": "cluster_11159437019_11159437020_11159437167_11159437172_#1more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11159437069_11159437077__3fca86",
+      "camera_name": "CCTV แยก ถนนอังรีดูนังต์ / ถนนพระรามที่ 4",
+      "road_id": "HENRIDUNANT",
+      "junction_id": "cluster_11159437069_11159437077_11159437082_2084092282_#5more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11159437169_11159437175__8f35a1",
+      "camera_name": "CCTV แยก ถนนสุรวงศ์ / ถนนนราธิวาสราชนครินทร์",
+      "road_id": "ถนนสุรวงศ์",
+      "junction_id": "cluster_11159437169_11159437175_313326044_7079366666_#1more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11159437219_11159437259__008ad0",
+      "camera_name": "CCTV แยก ถนนสุรวงศ์ / ซอยทีซีซี",
+      "road_id": "ถนนสุรวงศ์",
+      "junction_id": "cluster_11159437219_11159437259_5259009419",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11159437223_11159437225__375a84",
+      "camera_name": "CCTV แยก ถนนสุรวงศ์ / ถนนมเหสักข์",
+      "road_id": "ถนนสุรวงศ์",
+      "junction_id": "cluster_11159437223_11159437225_11159437228_281478163",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11162302808_11174922593__6198f2",
+      "camera_name": "CCTV แยก ถนนนราธิวาสราชนครินทร์ / ถนนสีลม",
+      "road_id": "ถนนนราธิวาสราชนครินทร์",
+      "junction_id": "cluster_11162302808_11174922593_11174922594_11174922630_#2more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11162302814_11162302815__80de42",
+      "camera_name": "CCTV แยก ถนนพญาไท / ถนนพระรามที่ 4",
+      "road_id": "PHAYATHAI",
+      "junction_id": "cluster_11162302814_11162302815_1703081521_1703081533_#4more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11174922612_692938066_519ca5",
+      "camera_name": "CCTV แยก ถนนสีลม / ถนนเดโช",
+      "road_id": "ถนนสีลม",
+      "junction_id": "cluster_11174922612_692938066",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11174922631_11174922634__1f4c2c",
+      "camera_name": "CCTV แยก ถนนสีลม / ถนนนราธิวาสราชนครินทร์",
+      "road_id": "ถนนสีลม",
+      "junction_id": "cluster_11174922631_11174922634_11174922635_13204061757_#4more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11174928538_3971828502_7_cbd433",
+      "camera_name": "CCTV ถนนสีลม",
+      "road_id": "ถนนสีลม",
+      "junction_id": "cluster_11174928538_3971828502_7313680538",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11174928539_11484488381__068717",
+      "camera_name": "CCTV ถนนสีลม",
+      "road_id": "ถนนสีลม",
+      "junction_id": "cluster_11174928539_11484488381_11484488382",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11304894034_11304894041__1e82b7",
+      "camera_name": "CCTV แยก ถนนสารสิน / ถนนหลังสวน",
+      "road_id": "SARASIN",
+      "junction_id": "cluster_11304894034_11304894041_279670654_3247690343",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_11854065394_11854065395__8ddda1",
+      "camera_name": "CCTV แยก ถนนราชดำริ / ถนนสารสิน",
+      "road_id": "RATCHADAMRI",
+      "junction_id": "cluster_11854065394_11854065395_1703140528_1703140531_#5more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_13359921928_275516047_cc815f",
+      "camera_name": "CCTV แยก ถนนสุขุมวิท / ซอยสุขุมวิท 4",
+      "road_id": "ถนนสุขุมวิท",
+      "junction_id": "cluster_13359921928_275516047",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_13359921946_13359921951__42e7cd",
+      "camera_name": "CCTV ซอยสุขุมวิท 3",
+      "road_id": "ซอยสุขุมวิท 3",
+      "junction_id": "cluster_13359921946_13359921951_13359921954_13395070995_#1more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_1702450907_1702450959_17_00e8fe",
+      "camera_name": "CCTV แยก ถนนวิทยุ / ถนนสารสิน",
+      "road_id": "WITTHAYU",
+      "junction_id": "cluster_1702450907_1702450959_1703156483",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_268267672_359587401_edf193",
+      "camera_name": "CCTV แยก ถนนจารุเมือง / ถนนเจริญเมือง",
+      "road_id": "CHARUMUEANG",
+      "junction_id": "cluster_268267672_359587401",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_268268480_280759541_7698_b3ccfb",
+      "camera_name": "CCTV แยก ถนนบรรทัดทอง / ถนนพระรามที่ 4",
+      "road_id": "BANTHATTHONG",
+      "junction_id": "cluster_268268480_280759541_7698890680_7698890681",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_268268906_359587678_3595_8b990b",
+      "camera_name": "CCTV แยก ถนนจารุเมือง / ถนนพระรามที่ 4",
+      "road_id": "CHARUMUEANG",
+      "junction_id": "cluster_268268906_359587678_359588207_5941823634",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_359243169_359243223_4516_117873",
+      "camera_name": "CCTV แยก ถนนราชดำริ / ถนนพระรามที่ 4",
+      "road_id": "RATCHADAMRI",
+      "junction_id": "cluster_359243169_359243223_451698007_451698008_#2more",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_359584630_359588676_26aae8",
+      "camera_name": "CCTV แยก ถนนพระรามที่ 6 / ถนนจรัสเมือง",
+      "road_id": "ถนนพระรามที่ 6",
+      "junction_id": "cluster_359584630_359588676",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    },
+    {
+      "camera_id": "TLS_cluster_66237586_8202146605_8202_316997",
+      "camera_name": "CCTV แยก ซอยเพชรบุรี 37 / ถนนเพชรบุรี",
+      "road_id": "ซอยเพชรบุรี 37",
+      "junction_id": "cluster_66237586_8202146605_8202146609",
+      "status": "active",
+      "calibration": {
+        "image_width": 0,
+        "image_height": 0,
+        "homography_matrix": [],
+        "anchor_lat": 0.0,
+        "anchor_lng": 0.0,
+        "bearing_deg": 0.0,
+        "pixels_per_meter": 0.0
+      },
+      "zones": []
+    }
+  ]
+}

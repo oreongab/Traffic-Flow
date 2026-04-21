@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "cameras": [
+    {
+      "camera_id": "TFF01",
+      "camera_name": "CCTV แยกปทุมวัน (ถ.พระราม 1/พญาไท)",
+      "road_id": "RAMA1",
+      "junction_id": "pathumwan",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF02",
+      "camera_name": "CCTV แยกราชประสงค์ (ถ.ราชดำริ/เพลินจิต)",
+      "road_id": "RATCHADAMRI",
+      "junction_id": "ratchaprasong",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF03",
+      "camera_name": "CCTV แยกอังรีดูนังต์ (ถ.พระราม 1/อังรีดูนังต์)",
+      "road_id": "HENRIDUNANT",
+      "junction_id": "henridunant",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF04",
+      "camera_name": "CCTV แยกเพลินจิต-วิทยุ (ถ.เพลินจิต/วิทยุ)",
+      "road_id": "WITTHAYU",
+      "junction_id": "ploenchit_witthayu",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF05",
+      "camera_name": "CCTV แยกชิดลม (ถ.เพลินจิต ฝั่ง BTS ชิดลม)",
+      "road_id": "PLOENCHIT",
+      "junction_id": "chidlom",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF06",
+      "camera_name": "CCTV แยกสามย่าน (ถ.พระราม 4/พญาไท)",
+      "road_id": "RAMA4",
+      "junction_id": "samyan",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF07",
+      "camera_name": "CCTV แยกบรรทัดทอง (ถ.บรรทัดทอง/จารุเมือง)",
+      "road_id": "BANTHATTHONG",
+      "junction_id": "banthatthong",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF08",
+      "camera_name": "CCTV ถ.พระราม 1 สยามสแควร์ (หน้าสยามฯ)",
+      "road_id": "RAMA1",
+      "junction_id": "siam",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF09",
+      "camera_name": "CCTV ถ.เพลินจิต (หน้า BTS ชิดลม ฝั่งใต้)",
+      "road_id": "PLOENCHIT",
+      "junction_id": "chidlom_s",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF10",
+      "camera_name": "CCTV แยกราชดำริ-สีลม (ถ.ราชดำริ/สีลม)",
+      "road_id": "RATCHADAMRI",
+      "junction_id": "ratchadamri_silom",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF11",
+      "camera_name": "CCTV ถ.พระราม 4 สามย่าน (หน้า MRT สามย่าน)",
+      "road_id": "RAMA4",
+      "junction_id": "mrt_samyan",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF12",
+      "camera_name": "CCTV ถ.พญาไท (หน้า BTS สยาม ฝั่งเหนือ)",
+      "road_id": "PHAYATHAI",
+      "junction_id": "bts_siam_n",
+      "calibration": null,
+      "zones": []
+    },
+    {
+      "camera_id": "TFF13",
+      "camera_name": "CCTV ถ.จารุเมือง (หน้าสถานีหัวลำโพง)",
+      "road_id": "CHARUMUEANG",
+      "junction_id": "hualamphong",
+      "calibration": null,
+      "zones": []
+    }
+  ]
+}
