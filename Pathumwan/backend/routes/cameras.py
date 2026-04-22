@@ -447,8 +447,7 @@ def api_camera_detect(camera_id):
 
 @cameras_bp.route("/<camera_id>/counts")
 def api_camera_counts(camera_id):
-    """Get vehicle counts for a camera from the latest YOLO detection stored in DB."""
-
+    """Get vehicle counts for a camera."""
     cam_id = str(camera_id)
 
     if _live_mode_enabled():
@@ -465,7 +464,21 @@ def api_camera_counts(camera_id):
                 "stream_status": stream_status.get("status", "offline"),
             })
 
-    # Prefer DB-stored detection (YOLO loop). If no detections exist yet, return zeros.
+    # Prioritize live SUMO counts if simulation is active
+    if _sim and getattr(_sim, "sim_active", False):
+        try:
+            counts = _sim.get_camera_counts(cam_id)
+            return jsonify({
+                "status": "ok",
+                "camera_id": cam_id,
+                "counts": counts,
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "source": "sumo-sim",
+            })
+        except Exception:
+            pass
+
+    # Fallback to DB-stored detection (YOLO loop). If no detections exist yet, return zeros.
     try:
         from database.connection import get_session
         from database.models import TrafficDetection

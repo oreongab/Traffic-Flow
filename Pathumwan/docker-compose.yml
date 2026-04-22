@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: traffixflow_db
+    environment:
+      POSTGRES_USER: traffix_user
+      POSTGRES_PASSWORD: traffix_password
+      POSTGRES_DB: traffixflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U traffix_user -d traffixflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: traffixflow_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URI=postgresql://traffix_user:traffix_password@db:5432/traffixflow
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+      - FRONTEND_URL=http://localhost:3000
+      # Change SYSTEM_MODE to 'real' if you want to use RTSP streams instead of SUMO
+      - SYSTEM_MODE=sim
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend-next
+      dockerfile: Dockerfile
+      args:
+        # Note: In production you might want this to point to your public domain API
+        NEXT_PUBLIC_API_URL: http://localhost:5000/api
+    container_name: traffixflow_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

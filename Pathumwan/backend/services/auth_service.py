@@ -83,7 +83,7 @@ def register_user(username, email, password):
             username=username,
             email=email,
             password_hash=password_hash,
-            role="user",
+            role="admin", # เปลี่ยนเป็น "admin" เพื่อให้มีสิทธิ์ใช้, beta ตอนจริงเป็น "user"
         )
         session.add(user)
         session.commit()
