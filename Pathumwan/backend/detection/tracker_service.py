@@ -600,11 +600,9 @@ def start_tracker_service_loop() -> None:
 
     detector = None
     try:
-        from detection.yolo_detector import YOLODetector
+        from detection.yolo_detector import get_shared_detector
 
-        detector = YOLODetector()
-        if detector.model is None:
-            detector = None
+        detector = get_shared_detector()
     except Exception:
         detector = None
 

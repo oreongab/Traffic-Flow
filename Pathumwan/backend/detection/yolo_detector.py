@@ -1,9 +1,11 @@
 """
-YOLO Vehicle Detector — wraps YOLOv8/YOLO11 for vehicle detection from SUMO CCTV frames.
+YOLO Vehicle Detector — wraps Ultralytics YOLO detection models for SUMO CCTV frames.
 """
 
 import os
 import numpy as np
+
+DEFAULT_YOLO_MODEL = "yolo12n.pt"
 
 # Process-wide status flag so /api/system/health can surface the real AI state
 # instead of silently returning zero counts from every camera.
@@ -35,16 +37,25 @@ class YOLODetector:
         self._load_model()
 
     def _load_model(self):
-        """Load YOLO model. Downloads if not found."""
+        """Load the configured YOLO model, preferring YOLO12 defaults."""
         try:
             from ultralytics import YOLO
-            if os.path.exists(self.model_path):
-                self.model = YOLO(self.model_path)
-            else:
-                # Auto-download YOLOv8n
-                self.model = YOLO("yolov8n.pt")
-            print(f"✓ YOLO model loaded: {self.model_path}")
-            YOLO_STATUS.update({"available": True, "reason": "loaded", "model_path": str(self.model_path)})
+            errors: list[str] = []
+            for source in self._candidate_model_sources():
+                try:
+                    self.model = YOLO(source)
+                    resolved_source = getattr(self.model, "ckpt_path", None) or source
+                    print(f"✓ YOLO model loaded: {resolved_source}")
+                    YOLO_STATUS.update({
+                        "available": True,
+                        "reason": "loaded",
+                        "model_path": str(resolved_source),
+                    })
+                    return
+                except Exception as exc:
+                    errors.append(f"{source}: {exc}")
+
+            raise RuntimeError("; ".join(errors))
         except ImportError:
             banner = (
                 "\n" + "=" * 68 + "\n"
@@ -60,6 +71,31 @@ class YOLODetector:
             print(f"⚠ YOLO model load failed: {e}")
             YOLO_STATUS.update({"available": False, "reason": f"load failed: {e}", "model_path": str(self.model_path)})
             self.model = None
+
+    def _candidate_model_sources(self) -> list[str]:
+        """Return preferred model sources, defaulting to YOLO12n."""
+        requested = str(self.model_path or "").strip()
+        candidates: list[str] = []
+
+        if requested:
+            basename = os.path.basename(requested)
+            if os.path.exists(requested):
+                candidates.append(requested)
+            elif basename == DEFAULT_YOLO_MODEL:
+                candidates.append(DEFAULT_YOLO_MODEL)
+            elif os.path.sep not in requested and requested.endswith(".pt"):
+                candidates.append(requested)
+
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        fallback_candidates = [
+            os.path.join(backend_dir, DEFAULT_YOLO_MODEL),
+            os.path.join(os.path.abspath(os.path.dirname(__file__)), "models", DEFAULT_YOLO_MODEL),
+            DEFAULT_YOLO_MODEL,
+        ]
+        for candidate in fallback_candidates:
+            if candidate not in candidates:
+                candidates.append(candidate)
+        return candidates
 
     def detect(self, frame):
         """

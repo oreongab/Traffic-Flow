@@ -54,7 +54,7 @@ class Config:
     SUMO_CFG_FILE = os.path.join(PROJECT_ROOT, "osm.sumocfg")
 
     # YOLO
-    YOLO_MODEL_PATH = os.getenv("YOLO_MODEL_PATH", "detection/models/yolov8n.pt")
+    YOLO_MODEL_PATH = os.getenv("YOLO_MODEL_PATH", "yolo12n.pt")
     YOLO_CONFIDENCE = float(os.getenv("YOLO_CONFIDENCE", 0.25))
 
     # Detection
@@ -93,12 +93,13 @@ class Config:
 
     # Pathumwan roads for traffic index
     PATHUMWAN_ROADS = [
-        "ถนนพระรามที่ 1",
-        "ถนนพระรามที่ 4",
+        "ถนนพระราม 1",
+        "ถนนพระราม 4",
         "ถนนพญาไท",
         "ถนนราชดำริ",
         "ถนนเพลินจิต",
         "ถนนบรรทัดทอง",
+        "ถนนเพชรบุรี",
         "ถนนจารุเมือง",
         "ถนนวิทยุ",
         "ถนนอังรีดูนังต์",

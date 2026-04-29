@@ -1,13 +1,13 @@
 # TraffixFlow: Smart Area Traffic Analytics
 
-**TraffixFlow** is a comprehensive, hybrid intelligent traffic analysis and simulation workspace focused explicitly on the **Pathumwan** district in Bangkok. It combines real-time YOLOv8 AI computer vision with Eclipse SUMO simulation data to create accurate, location-aware traffic indices and CCTV control surfaces.
+**TraffixFlow** is a comprehensive, hybrid intelligent traffic analysis and simulation workspace focused explicitly on the **Pathumwan** district in Bangkok. It combines real-time YOLOv12 AI computer vision with Eclipse SUMO simulation data to create accurate, location-aware traffic indices and CCTV control surfaces.
 
 ## 🚀 Core Features Matrix
 
 | Feature | Real-Time Mode (`SYSTEM_MODE=real`) | Simulation Mode (`SYSTEM_MODE=sim`) |
 | :--- | :--- | :--- |
 | **Data Source** | Actual RTSP/MJPEG camera streams | SUMO / TraCI Headless Server |
-| **Traffic Engine** | YOLOv8 + DeepSORT Tracking | TraCI edge induction loops |
+| **Traffic Engine** | YOLOv12 + DeepSORT Tracking | TraCI edge induction loops |
 | **Index Fallback** | Historical decay logic applied on YOLO blindness | Pure simulation geometry averages |
 | **CCTV Surface** | Authentic detection feed with object boxes | TraCI snapshot mapped onto Leaflet Mini-Map |
 
@@ -17,7 +17,7 @@
 
 - **Frontend Environment**: Next.js 16 (React 19), TailwindCSS Vanilla, Chart.js, Leaflet JS.
 - **Backend Environment**: Python 3.10+, Flask, SQLAlchemy (PostgreSQL / SQLite).
-- **AI & Analytics**: YOLOv8 (Ultralytics), OpenCV, DeepSORT Tracking.
+- **AI & Analytics**: YOLOv12 (Ultralytics), OpenCV, DeepSORT Tracking.
 - **Simulation**: Eclipse SUMO, `osm.net.xml`, TraCI connector.
 
 ---
@@ -36,7 +36,7 @@ The system is designed around 4 major asynchronous pipelines running within `bac
 
 ### 1. 📷 Ingestion & AI Pipeline (Real-Mode)
 - `services/rtsp_ingest.py`: Fetches real-world camera streams (or fallbacks to loop feeds to prevent crashes).
-- `detection/tracker_service.py`: Passes frames through YOLOv8. Acts as the **Single Source of Truth** for real-world speed (`avg_speed`), counts (`vehicle_count`), and spatial mapping (`occupancy_ratio`).
+- `detection/tracker_service.py`: Passes frames through YOLOv12. Acts as the **Single Source of Truth** for real-world speed (`avg_speed`), counts (`vehicle_count`), and spatial mapping (`occupancy_ratio`).
 - `detection/detector_service.py`: Caches stream buffers, drawing bounding boxes for the frontend CCTV view over MJPEG.
 
 ### 2. 🚦 Simulation Pipeline (Sim-Mode)

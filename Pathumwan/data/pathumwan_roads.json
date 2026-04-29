@@ -1,15 +1,16 @@
 {
 	"roads": [
-		{"code": "RAMA1", "name_th": "ถนนพระราม 1", "free_flow_speed_kmh": 50},
-		{"code": "RAMA4", "name_th": "ถนนพระราม 4", "free_flow_speed_kmh": 50},
-		{"code": "PHAYATHAI", "name_th": "ถนนพญาไท", "free_flow_speed_kmh": 50},
-		{"code": "RATCHADAMRI", "name_th": "ถนนราชดำริ", "free_flow_speed_kmh": 50},
-		{"code": "PLOENCHIT", "name_th": "ถนนเพลินจิต", "free_flow_speed_kmh": 50},
-		{"code": "BANTHATTHONG", "name_th": "ถนนบรรทัดทอง", "free_flow_speed_kmh": 50},
+		{"code": "RAMA1", "name_th": "ถนนพระราม 1", "free_flow_speed_kmh": 50, "aliases": ["ถนนพระราม1", "ถนนพระรามที่ 1", "พระราม 1", "พระราม1"]},
+		{"code": "RAMA4", "name_th": "ถนนพระราม 4", "free_flow_speed_kmh": 50, "aliases": ["ถนนพระราม4", "ถนนพระรามที่ 4", "พระราม 4", "พระราม4"]},
+		{"code": "PHAYATHAI", "name_th": "ถนนพญาไท", "free_flow_speed_kmh": 50, "aliases": ["ถ.พญาไท"]},
+		{"code": "RATCHADAMRI", "name_th": "ถนนราชดำริ", "free_flow_speed_kmh": 50, "aliases": ["ถ.ราชดำริ"]},
+		{"code": "PLOENCHIT", "name_th": "ถนนเพลินจิต", "free_flow_speed_kmh": 50, "aliases": ["ถ.เพลินจิต"]},
+		{"code": "PHETCHABURI", "name_th": "ถนนเพชรบุรี", "free_flow_speed_kmh": 50, "aliases": ["ถ.เพชรบุรี", "เพชรบุรี"]},
+		{"code": "BANTHATTHONG", "name_th": "ถนนบรรทัดทอง", "free_flow_speed_kmh": 50, "aliases": ["ถ.บรรทัดทอง"]},
 		{"code": "CHARUMUEANG", "name_th": "ถนนจารุเมือง", "free_flow_speed_kmh": 50},
-		{"code": "WITTHAYU", "name_th": "ถนนวิทยุ", "free_flow_speed_kmh": 50},
-		{"code": "HENRIDUNANT", "name_th": "ถนนอังรีดูนังต์", "free_flow_speed_kmh": 50},
-		{"code": "SARASIN", "name_th": "ถนนสารสิน", "free_flow_speed_kmh": 50}
+		{"code": "WITTHAYU", "name_th": "ถนนวิทยุ", "free_flow_speed_kmh": 50, "aliases": ["ถ.วิทยุ"]},
+		{"code": "HENRIDUNANT", "name_th": "ถนนอังรีดูนังต์", "free_flow_speed_kmh": 50, "aliases": ["ถ.อังรีดูนังต์"]},
+		{"code": "SARASIN", "name_th": "ถนนสารสิน", "free_flow_speed_kmh": 50, "aliases": ["ถ.สารสิน"]}
 	],
 	"cameras": [
 		{"id": "TFF01", "name": "CCTV แยกปทุมวัน (ถ.พระราม 1/พญาไท)", "lat": 13.7466, "lng": 100.5291, "road": "RAMA1", "junction": "pathumwan"},

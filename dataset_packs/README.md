@@ -4,7 +4,7 @@
 
 ## เวลาเปลี่ยน Dataset จริง ๆ ต้องเปลี่ยนไฟล์อะไรบ้าง?
 
-ในโปรเจกต์นี้ `Pathumwan/osm.sumocfg` ชี้ `route-files` ไปที่ `osm.dataset.rou.xml` ดังนั้นการเปลี่ยน dataset ต้องทำให้ไฟล์ route นี้เปลี่ยนตามด้วย
+ในโปรเจกต์นี้ `Pathumwan/osm.sumocfg` ชี้ `route-files` ไปที่ `osm.dataset.rou.xml.gz` ดังนั้นการเปลี่ยน dataset ต้องทำให้ไฟล์ route นี้เปลี่ยนตามด้วย
 
 ไฟล์ที่เกี่ยวข้องมี 2 กลุ่ม:
 
@@ -13,7 +13,7 @@
 
 **2) Derived (ต้อง regenerate หรือ copy มาทับเพื่อให้ SUMO เปลี่ยนตาม)**
 - `Pathumwan/osm.dataset.trips.xml`
-- `Pathumwan/osm.dataset.rou.xml`
+- `Pathumwan/osm.dataset.rou.xml.gz`
 - `Pathumwan/data/dataset_route_mapping.generated.json`
 
 > ถ้าเปลี่ยนแค่ `Dataset.csv` แล้วไม่ regenerate/copy ไฟล์ derived — SUMO จะยังใช้ route เดิม (ไม่เปลี่ยน)
@@ -28,7 +28,7 @@
 
 สิ่งที่สคริปต์ทำ:
 - คัดลอก pack ไปทับ `Pathumwan/data/Dataset.csv`
-- แล้ว regenerate `osm.dataset.trips.xml` + `osm.dataset.rou.xml` + mapping ใหม่แบบ **ไม่ pause**
+- แล้ว regenerate `osm.dataset.trips.xml` + `osm.dataset.rou.xml.gz` + mapping ใหม่แบบ **ไม่ pause**
 
 ### วิธี B: คัดลอกแบบไม่ต้อง build (ใช้ไฟล์ derived ที่ pack เตรียมไว้)
 เหมาะกับกรณีที่ไม่อยากตั้งค่าเครื่องให้ build หรืออยากให้เพื่อน “ก็อปแล้วรัน”
@@ -36,7 +36,7 @@
 ให้คัดลอกไฟล์จาก `dataset_packs/<PACK>/Pathumwan/` ไปทับใน `Pathumwan/` ตามนี้:
 - `dataset_packs/<PACK>/Pathumwan/data/Dataset.csv`  -> `Pathumwan/data/Dataset.csv`
 - `dataset_packs/<PACK>/Pathumwan/osm.dataset.trips.xml` -> `Pathumwan/osm.dataset.trips.xml`
-- `dataset_packs/<PACK>/Pathumwan/osm.dataset.rou.xml`   -> `Pathumwan/osm.dataset.rou.xml`
+- `dataset_packs/<PACK>/Pathumwan/osm.dataset.rou.xml.gz`   -> `Pathumwan/osm.dataset.rou.xml.gz`
 - `dataset_packs/<PACK>/Pathumwan/data/dataset_route_mapping.generated.json` -> `Pathumwan/data/dataset_route_mapping.generated.json`
 
 ## ถ้าใช้ “ลิงก์ (symlink)” ได้ไหม?
@@ -45,10 +45,12 @@
 - ต่อให้ลิงก์ `Dataset.csv` แล้ว ก็ยังต้อง regenerate/copy ไฟล์ derived เพื่อให้ SUMO เปลี่ยนตามอยู่ดี
 
 ## ทำไม backend / detection ถึงเปลี่ยนตาม dataset ด้วย?
-เพราะ backend รัน SUMO ด้วย `Pathumwan/osm.sumocfg` ซึ่งโหลด `Pathumwan/osm.dataset.rou.xml` ตลอด
+เพราะ backend รัน SUMO ด้วย `Pathumwan/osm.sumocfg` ซึ่งโหลด `Pathumwan/osm.dataset.rou.xml.gz` ตลอด
 ดังนั้นเมื่อคุณ rebuild/copy route ใหม่แล้ว:
 - ปริมาณ/การกระจายรถใน TraCI จะเปลี่ยน
 - endpoint ที่นับรถ/เรนเดอร์กล้อง/ทำ detection จะเห็นสภาพการจราจรใหม่ตาม dataset นั้น
+
+หมายเหตุ: pipeline นี้ปิดการสร้าง `osm.dataset.rou.alt.xml` เพื่อให้ไฟล์สะอาดและลดพื้นที่เก็บ
 
 ## รายการ packs
 - `01_data_67_100pct` : ต้นฉบับปี 67 (100%)

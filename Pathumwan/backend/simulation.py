@@ -107,8 +107,8 @@ def capture_cctv_frame(camera_id, zoom_level="near", show_detection=False):
         detector = None
         if show_detection:
             try:
-                from detection.yolo_detector import YOLODetector
-                detector = YOLODetector()
+                from detection.yolo_detector import get_shared_detector
+                detector = get_shared_detector()
             except Exception:
                 pass
 
@@ -355,6 +355,7 @@ def _build_road_mapping():
         "PHAYATHAI": ["phayathai", "phaya thai", "พญาไท"],
         "RATCHADAMRI": ["ratchadamri", "ราชดำริ"],
         "PLOENCHIT": ["ploenchit", "เพลินจิต"],
+        "PHETCHABURI": ["phetchaburi", "เพชรบุรี"],
         "BANTHATTHONG": ["banthat thong", "banthatthong", "บรรทัดทอง"],
         "CHARUMUEANG": ["charu mueang", "charumueang", "จารุเมือง"],
         "WITTHAYU": ["witthayu", "wireless", "วิทยุ"],

@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y software-properties-common python3-pip 
 RUN ln -s /usr/bin/python3 /usr/bin/python || true
 
 ENV SUMO_HOME=/usr/share/sumo
+ENV YOLO_CONFIG_DIR=/tmp/Ultralytics
 
 WORKDIR /app
 

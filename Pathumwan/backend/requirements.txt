@@ -15,7 +15,7 @@ numpy>=1.26
 sumolib>=1.20
 
 # YOLO (vehicle detection)
-ultralytics>=8.0
+ultralytics>=8.4.42
 
 # AI/RL
 stable-baselines3>=2.0

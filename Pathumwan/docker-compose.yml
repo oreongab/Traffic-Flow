@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
@@ -27,13 +25,14 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - DATABASE_URI=postgresql://traffix_user:traffix_password@db:5432/traffixflow
       - FLASK_HOST=0.0.0.0
       - FLASK_PORT=5000
       - FRONTEND_URL=http://localhost:3000
+      - DATABASE_URI=postgresql://traffix_user:traffix_password@db:5432/traffixflow
       # Change SYSTEM_MODE to 'real' if you want to use RTSP streams instead of SUMO
       - SYSTEM_MODE=sim
     volumes:
+      - ./backend:/app/backend
       - ./data:/app/data
     depends_on:
       db:

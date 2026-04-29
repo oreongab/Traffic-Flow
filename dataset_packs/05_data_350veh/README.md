@@ -7,7 +7,7 @@
 
 - `Pathumwan/data/Dataset.csv`
 - `Pathumwan/osm.dataset.trips.xml`
-- `Pathumwan/osm.dataset.rou.xml`
+- `Pathumwan/osm.dataset.rou.xml.gz`
 - `Pathumwan/data/dataset_route_mapping.generated.json`
 
 ## วิธีใช้งาน

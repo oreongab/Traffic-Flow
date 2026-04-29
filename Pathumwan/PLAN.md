@@ -33,7 +33,7 @@
 | เทคโนโลยี | ตัวเลือกเดิมที่พิจารณา | ที่เลือกเพราะ |
 |---|---|---|
 | **SUMO (Simulation of Urban Mobility)** | AIMSUN, VISSIM, CARLA | Open-source, import OSM ได้ตรงเขต, มี TraCI API ให้ Python พูดคุยแบบ real-time, support `traci.trafficlight.setPhase()` (คำสั่งพื้นฐานของ RL agent) |
-| **YOLOv8n (Ultralytics)** | YOLOv5, Faster R-CNN | 8n เบา FPS สูงพอสำหรับ 55 กล้อง × ทุก 5s, pretrained COCO มี vehicle classes (2 car, 3 motorcycle, 5 bus, 7 truck) ครบ, API สวยและสลับ backbone ได้ง่าย |
+| **YOLO12n (Ultralytics)** | YOLO11, Faster R-CNN | 12n ยังเบาพอสำหรับ 55 กล้อง × ทุก 5s, pretrained COCO มี vehicle classes (2 car, 3 motorcycle, 5 bus, 7 truck) ครบ, API สวยและสลับ backbone ได้ง่าย |
 | **Flask 3** | FastAPI, Django | Lightweight, ไม่ติด framework convention, รองรับ MJPEG streaming + JSON + background threads ในตัวเดียวได้สบาย |
 | **Next.js 16 App Router + React 19** | Vite SPA, plain React | Hot-reload ดี, file-based routing ช่วย prototype หน้าเว็บหลาย ๆ หน้าเร็ว, รองรับ dynamic import (สำหรับ Leaflet ที่ต้อง window) |
 | **Neon PostgreSQL (+SQLite fallback)** | MySQL, MongoDB | Postgres native JSON columns สำหรับ `vehicle_counts`, `zones`, `phase_durations`, รองรับ concurrent writes จาก 6 background threads, Neon มี free tier พร้อม auto-scaling |
@@ -316,7 +316,7 @@ Retention policy รันจาก `services/daily_stats.py::purge_old_raw_data
 
 | เป้าหมาย | ไฟล์ | สิ่งที่ต้องทำ |
 |---|---|---|
-| เปลี่ยน YOLO weight / backbone | `backend/detection/yolo_detector.py` | แก้ `_load_model()`; ใช้ `Config.YOLO_MODEL_PATH` (default `yolov8n.pt`) |
+| เปลี่ยน YOLO weight / backbone | `backend/detection/yolo_detector.py` | แก้ `_load_model()`; ใช้ `Config.YOLO_MODEL_PATH` (default `yolo12n.pt`) |
 | เพิ่มคลาส (เช่น tuk-tuk, van) | `backend/detection/yolo_detector.py` | แก้ `_CLASS_MAP` + add key ใน `counts` schema ของ `traffic_detections.vehicle_counts` |
 | ใช้ ONNX / TensorRT | `backend/detection/yolo_detector.py` | แทนที่ `ultralytics.YOLO` ด้วย `onnxruntime` / `tensorrt` — ต้องคง `detect(frame_bytes) -> list[dict]` interface เดิม |
 | เพิ่ม tracking (ByteTrack/DeepSORT) | `backend/detection/tracker_service.py` (โครงมีอยู่) | implement `start_tracker_service_loop()` + เขียนไปยัง `traffic_detections` (เพิ่ม track_id) — อาจต้องเพิ่ม column ใน model ด้วย |
@@ -449,7 +449,7 @@ GET http://localhost:5000/api/health
 | `CAMERA_BACKEND` | `sumo` | `sumo` / `rtsp` |
 | `SIGNAL_BACKEND` | `sim` | `sim` = TraCI / `controller` = external |
 | `AI_BACKEND` | `mock` | `mock` / `torch` / `onnx` |
-| `YOLO_MODEL_PATH` | `yolov8n.pt` | path ไปยัง weight |
+| `YOLO_MODEL_PATH` | `yolo12n.pt` | path ไปยัง weight |
 | `DETECTION_INTERVAL` | `5` | วินาที — YOLO run ต่อรอบ |
 | `INDEX_INTERVAL` | `30` | วินาที — density + index calc |
 | `STALE_THRESHOLD_SECONDS` | `30` | ถือว่ากล้อง offline เมื่อ freshness เกินค่านี้ |

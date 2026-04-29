@@ -8,12 +8,12 @@ param(
     [switch]$DatasetOnly
 )
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$packsRoot = Resolve-Path $PSScriptRoot
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$packsRoot = (Resolve-Path $PSScriptRoot).Path
 
 $packRoot = Join-Path $packsRoot $Pack
 
-$sourceDataset = Join-Path $packRoot "Pathumwan" "data" "Dataset.csv"
+$sourceDataset = [System.IO.Path]::Combine($packRoot, "Pathumwan", "data", "Dataset.csv")
 if (-not (Test-Path $sourceDataset)) {
     Write-Error "Pack not found or missing Dataset.csv: $sourceDataset"
     Write-Host "Available packs:" -ForegroundColor Yellow
@@ -21,7 +21,7 @@ if (-not (Test-Path $sourceDataset)) {
     exit 1
 }
 
-$destination = Join-Path $repoRoot "Pathumwan" "data" "Dataset.csv"
+$destination = [System.IO.Path]::Combine($repoRoot, "Pathumwan", "data", "Dataset.csv")
 if (-not (Test-Path (Split-Path -Parent $destination))) {
     Write-Error "Destination folder not found: $(Split-Path -Parent $destination)"
     exit 1
@@ -31,22 +31,22 @@ Copy-Item -Path $sourceDataset -Destination $destination -Force
 Write-Host "Copied: $sourceDataset" -ForegroundColor Green
 Write-Host "   -> $destination" -ForegroundColor Green
 
-$pathumwanRoot = Join-Path $repoRoot "Pathumwan"
+$pathumwanRoot = [System.IO.Path]::Combine($repoRoot, "Pathumwan")
 
 # Copy derived SUMO files if present (so SUMO changes immediately without rebuild)
 if (-not $DatasetOnly) {
     $derivedPairs = @(
         @{
-            Source = (Join-Path $packRoot "Pathumwan" "osm.dataset.trips.xml")
-            Dest   = (Join-Path $pathumwanRoot "osm.dataset.trips.xml")
+            Source = [System.IO.Path]::Combine($packRoot, "Pathumwan", "osm.dataset.trips.xml")
+            Dest   = [System.IO.Path]::Combine($pathumwanRoot, "osm.dataset.trips.xml")
         },
         @{
-            Source = (Join-Path $packRoot "Pathumwan" "osm.dataset.rou.xml")
-            Dest   = (Join-Path $pathumwanRoot "osm.dataset.rou.xml")
+            Source = [System.IO.Path]::Combine($packRoot, "Pathumwan", "osm.dataset.rou.xml.gz")
+            Dest   = [System.IO.Path]::Combine($pathumwanRoot, "osm.dataset.rou.xml.gz")
         },
         @{
-            Source = (Join-Path $packRoot "Pathumwan" "data" "dataset_route_mapping.generated.json")
-            Dest   = (Join-Path $pathumwanRoot "data" "dataset_route_mapping.generated.json")
+            Source = [System.IO.Path]::Combine($packRoot, "Pathumwan", "data", "dataset_route_mapping.generated.json")
+            Dest   = [System.IO.Path]::Combine($pathumwanRoot, "data", "dataset_route_mapping.generated.json")
         }
     )
 
@@ -66,11 +66,11 @@ if (-not $DatasetOnly) {
 }
 
 if ($Build) {
-    $generator = Join-Path $pathumwanRoot "generate_dataset_routes.py"
-    $netFile = Join-Path $pathumwanRoot "osm.net.xml"
-    $outTrips = Join-Path $pathumwanRoot "osm.dataset.trips.xml"
-    $outRou = Join-Path $pathumwanRoot "osm.dataset.rou.xml"
-    $outMapping = Join-Path $pathumwanRoot "data" "dataset_route_mapping.generated.json"
+    $generator = [System.IO.Path]::Combine($pathumwanRoot, "generate_dataset_routes.py")
+    $netFile = [System.IO.Path]::Combine($pathumwanRoot, "osm.net.xml")
+    $outTrips = [System.IO.Path]::Combine($pathumwanRoot, "osm.dataset.trips.xml")
+    $outRou = [System.IO.Path]::Combine($pathumwanRoot, "osm.dataset.rou.xml.gz")
+    $outMapping = [System.IO.Path]::Combine($pathumwanRoot, "data", "dataset_route_mapping.generated.json")
 
     if (-not (Test-Path $generator)) {
         Write-Error "generate_dataset_routes.py not found: $generator"
@@ -92,7 +92,7 @@ if ($Build) {
 
     $duarouter = $null
     if ($env:SUMO_HOME) {
-        $candidate = Join-Path $env:SUMO_HOME "bin" "duarouter.exe"
+        $candidate = [System.IO.Path]::Combine($env:SUMO_HOME, "bin", "duarouter.exe")
         if (Test-Path $candidate) {
             $duarouter = $candidate
         }
@@ -110,7 +110,7 @@ if ($Build) {
     & $pythonCmd.Source $generator --dataset $destination --net $netFile --output-trips $outTrips --output-mapping $outMapping
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-    & $duarouter -n $netFile --route-files $outTrips -o $outRou --remove-loops true --ignore-errors true --no-step-log true
+    & $duarouter -n $netFile --route-files $outTrips -o $outRou --alternatives-output NUL --remove-loops true --ignore-errors true --no-step-log true
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Build complete (no pause)." -ForegroundColor Green
