@@ -10,12 +10,11 @@ from services.live_state import get_latest_junction_state
 
 _mode_lock = Lock()
 _signal_mode = "manual"
-
+_active_ai_algorithm = "PPO"  # Default AI algorithm
 
 def get_signal_mode() -> str:
     with _mode_lock:
         return _signal_mode
-
 
 def set_signal_mode(mode: str) -> str:
     normalized = str(mode or "manual").strip().lower()
@@ -24,6 +23,20 @@ def set_signal_mode(mode: str) -> str:
     with _mode_lock:
         global _signal_mode
         _signal_mode = normalized
+    return normalized
+
+def get_active_ai_algorithm() -> str:
+    with _mode_lock:
+        return _active_ai_algorithm
+
+def set_active_ai_algorithm(algorithm: str) -> str:
+    normalized = str(algorithm).strip().upper()
+    valid_algorithms = {"PPO", "DQN", "A2C", "RULE_BASED"}
+    if normalized not in valid_algorithms:
+        raise ValueError(f"Algorithm must be one of {valid_algorithms}")
+    with _mode_lock:
+        global _active_ai_algorithm
+        _active_ai_algorithm = normalized
     return normalized
 
 
@@ -127,6 +140,8 @@ class SimSignalController:
                     programs = traci.trafficlight.getAllProgramLogics(junction_id)
                     phase_count = len(programs[0].phases) if programs else 1
                     target_phase = target_phase % max(1, phase_count)
+                    if programs:
+                        traci.trafficlight.setProgram(junction_id, programs[0].programID)
                     traci.trafficlight.setPhase(junction_id, target_phase)
                     applied.append({
                         "junction_id": junction_id,

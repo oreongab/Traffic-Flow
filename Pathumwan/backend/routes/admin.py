@@ -23,6 +23,8 @@ from services.signal_controller import (
     get_signal_controller,
     get_signal_mode,
     set_signal_mode,
+    get_active_ai_algorithm,
+    set_active_ai_algorithm,
 )
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
@@ -132,8 +134,10 @@ def api_ai_status():
     """Get current AI system status."""
     status = _controller().get_status()
     mode = get_signal_mode()
+    algorithm = get_active_ai_algorithm()
     return jsonify({
         "mode": mode,
+        "algorithm": algorithm,
         "active": bool(status.get("active", False)),
         "ai_mode": mode == "ai",
         "simulation_active": bool(status.get("simulation_active", False)),
@@ -141,6 +145,44 @@ def api_ai_status():
         "camera_count": int(status.get("camera_count", 0) or 0),
         "backends": get_runtime_backends(),
     })
+
+@admin_bp.route("/ai/algorithm", methods=["GET"])
+@require_admin
+def api_get_ai_algorithm():
+    """Get current AI algorithm."""
+    return jsonify({"algorithm": get_active_ai_algorithm()})
+
+@admin_bp.route("/ai/algorithm", methods=["POST"])
+@require_admin
+def api_set_ai_algorithm():
+    """Set the active AI algorithm."""
+    data = request.get_json(silent=True) or {}
+    algorithm = data.get("algorithm", "").upper()
+    current_user = _request_user()
+
+    try:
+        new_algorithm = set_active_ai_algorithm(algorithm)
+        
+        session = get_session()
+        try:
+            log = SystemLog(
+                event_type="ai_algorithm_change",
+                details={"algorithm": new_algorithm, "by": current_user.get("username", "admin")},
+            )
+            session.add(log)
+            session.commit()
+        except Exception:
+            session.rollback()
+        finally:
+            session.close()
+            
+        return jsonify({
+            "success": True,
+            "algorithm": new_algorithm,
+            "message": f"เปลี่ยน AI เป็น {new_algorithm} สำเร็จ"
+        })
+    except ValueError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
 
 
 @admin_bp.route("/signal/mode", methods=["GET"])

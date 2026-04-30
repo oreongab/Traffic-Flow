@@ -128,7 +128,11 @@ def build_pipeline_snapshot(
     time_of_day_norm = (current_time % 86400.0) / 86400.0
 
     global_speeds: list[float] = []
-    global_vehicle_ids = set(str(vid) for vid in traci_module.vehicle.getIDList())
+    # Use getIDCount() instead of getIDList() to avoid creating a huge set every step
+    try:
+        global_vehicle_count = int(traci_module.vehicle.getIDCount())
+    except Exception:
+        global_vehicle_count = 0
     junction_features: list[JunctionFeatures] = []
 
     for junction_id in junction_ids:
@@ -199,7 +203,7 @@ def build_pipeline_snapshot(
     return PipelineSnapshot(
         timestamp=current_time,
         junctions=junction_features,
-        global_vehicle_count=len(global_vehicle_ids),
+        global_vehicle_count=global_vehicle_count,
         global_avg_speed_kmh=float(np.mean(global_speeds)) if global_speeds else 0.0,
     )
 

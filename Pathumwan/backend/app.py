@@ -381,6 +381,7 @@ def _background_thread_specs() -> list[tuple[str, Callable[[], object]]]:
             ("Camera Capture", _start_camera_capture),
             ("Detection", _start_detection),
             ("Signal Apply", _start_signal_apply_loop),
+            ("AI Inference", _start_ai_loop),
         ] + threads
 
     if Config.SYSTEM_MODE == "real" or Config.CAMERA_BACKEND == "rtsp":
@@ -582,6 +583,132 @@ def _start_signal_apply_loop():
 
         except Exception as e:
             print(f"  ⚠ Signal apply tick error: {type(e).__name__}: {e}")
+
+        time.sleep(POLL_INTERVAL)
+
+
+def _start_ai_loop():
+    """Background loop to run AI Inference and save results for reporting."""
+    import time
+    import os
+    import json
+    import traci as traci_module
+    from ai.agent import TrafficAgent
+    from ai.pipeline import build_pipeline_snapshot, snapshot_to_observation
+    from ai.config import AIConfig
+    from services.signal_controller import get_signal_controller, get_signal_mode, get_active_ai_algorithm
+
+    print("🚀 Starting AI Inference Loop...")
+    
+    current_algorithm = get_active_ai_algorithm()
+    agent = TrafficAgent(env=None, algorithm=current_algorithm)
+    # Load trained model if available, else fall back to rule-based fallback
+    agent.load()
+
+    POLL_INTERVAL = AIConfig.ACTION_INTERVAL * float(AIConfig.SIM_STEP_LENGTH)
+    
+    # Setup for report collection
+    data_dir = os.path.join(Config.PROJECT_ROOT, "data")
+    os.makedirs(data_dir, exist_ok=True)
+    report_file = os.path.join(data_dir, "ai_inference_log.json")
+    
+    # Initialize empty log
+    try:
+        with open(report_file, "w", encoding="utf-8") as f:
+            json.dump([], f)
+    except Exception:
+        pass
+
+    while True:
+        try:
+            import simulation as _sim
+            if not getattr(_sim, "sim_active", False):
+                time.sleep(POLL_INTERVAL)
+                continue
+
+            mode = get_signal_mode()
+            if mode != "ai":
+                time.sleep(POLL_INTERVAL)
+                continue
+
+            controller = get_signal_controller(_sim)
+
+            # Discover junction IDs from SUMO traffic lights
+            with _sim.sim_lock:
+                try:
+                    junction_ids = list(traci_module.trafficlight.getIDList())
+                except Exception:
+                    junction_ids = []
+
+            if not junction_ids:
+                time.sleep(POLL_INTERVAL)
+                continue
+
+            # Build state (under lock to avoid race with simulationStep)
+            with _sim.sim_lock:
+                snapshot = build_pipeline_snapshot(traci_module, junction_ids)
+            obs = snapshot_to_observation(snapshot)
+
+            target_algorithm = get_active_ai_algorithm()
+            if target_algorithm != current_algorithm:
+                print(f"🔄 Switching AI Agent from {current_algorithm} to {target_algorithm}")
+                current_algorithm = target_algorithm
+                agent = TrafficAgent(env=None, algorithm=current_algorithm)
+                agent.load()
+
+            # Predict action (either via RL model or rule-based fallback)
+            action_indices = agent.predict(obs)
+            
+            # Formulate action payload
+            actions = []
+            for i, jid in enumerate(junction_ids):
+                phase_idx = int(action_indices[i]) if i < len(action_indices) else 0
+                actions.append({
+                    "junction_id": jid,
+                    "target_phase": phase_idx
+                })
+
+            # Apply actions (controller.apply_ai_actions uses sim_lock internally)
+            controller.apply_ai_actions(actions)
+
+            # Save report
+            log_entry = {
+                "timestamp": time.time(),
+                "step": _sim.step,
+                "signal_mode": mode,
+                "algorithm": current_algorithm,
+                "method": "trained_model" if agent.model is not None else "rule_based",
+                "global_vehicle_count": snapshot.global_vehicle_count,
+                "global_avg_speed_kmh": round(snapshot.global_avg_speed_kmh, 2),
+                "actions_count": len(actions),
+                "actions": actions[:10],  # Limit to first 10 for log size
+                "junctions": [
+                    {
+                        "junction_id": j.junction_id,
+                        "queue_length": round(j.queue_length, 2),
+                        "waiting_time": round(j.waiting_time, 2),
+                        "current_phase": j.current_phase,
+                        "vehicle_count": round(j.vehicle_count, 2),
+                        "avg_speed_kmh": round(j.avg_speed_kmh, 2),
+                    } for j in snapshot.junctions[:10]  # Limit to first 10
+                ]
+            }
+            try:
+                with open(report_file, "r", encoding="utf-8") as f:
+                    logs = json.load(f)
+            except Exception:
+                logs = []
+            
+            logs.append(log_entry)
+            # Keep last 500 records to prevent file from getting too large
+            if len(logs) > 500:
+                logs = logs[-500:]
+            
+            with open(report_file, "w", encoding="utf-8") as f:
+                json.dump(logs, f)
+
+        except Exception as e:
+            print(f"  ⚠ AI Inference Loop Error: {e}")
 
         time.sleep(POLL_INTERVAL)
 

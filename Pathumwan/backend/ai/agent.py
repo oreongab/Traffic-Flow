@@ -1,11 +1,13 @@
 """
 RL Agent — PPO/DQN wrapper for traffic signal optimization.
-Uses Stable-Baselines3 when available, falls back to simple rule-based agent.
+Uses Stable-Baselines3 when available, falls back to smart rule-based agent.
 """
 
 import os
 from importlib import import_module
 import numpy as np
+import gymnasium as gym
+
 from ai.config import AIConfig
 
 
@@ -13,6 +15,27 @@ def _load_sb3_class(name):
     """Load Stable-Baselines3 symbols lazily so optional installs don't break import-time analysis."""
     module = import_module("stable_baselines3")
     return getattr(module, name)
+
+
+class FlattenActionWrapper(gym.ActionWrapper):
+    """Wraps MultiDiscrete action space to Discrete for DQN compatibility."""
+    def __init__(self, env):
+        super().__init__(env)
+        if isinstance(env.action_space, gym.spaces.MultiDiscrete):
+            self.nvec = env.action_space.nvec
+            # DQN output will be a single integer, which we convert back to MultiDiscrete
+            self.action_space = gym.spaces.Discrete(int(np.prod(self.nvec)))
+        else:
+            self.nvec = None
+
+    def action(self, act):
+        if self.nvec is None:
+            return act
+        res = []
+        for n in reversed(self.nvec):
+            res.append(act % n)
+            act //= n
+        return np.array(list(reversed(res)))
 
 
 class TrafficAgent:
@@ -23,7 +46,7 @@ class TrafficAgent:
         self.algorithm = algorithm or AIConfig.ALGORITHM
         self.model = None
 
-    def train(self, total_timesteps=None):
+    def train(self, total_timesteps=None, callback=None):
         """Train the agent using Stable-Baselines3."""
         total_timesteps = total_timesteps or AIConfig.TOTAL_TIMESTEPS
 
@@ -41,57 +64,151 @@ class TrafficAgent:
                     batch_size=AIConfig.BATCH_SIZE,
                     n_epochs=AIConfig.N_EPOCHS,
                     ent_coef=AIConfig.ENTROPY_COEF,
+                    vf_coef=AIConfig.VF_COEF,
                     max_grad_norm=AIConfig.MAX_GRAD_NORM,
                     verbose=1,
-                    tensorboard_log=AIConfig.LOG_DIR,
+                    tensorboard_log=None,  # Set to AIConfig.LOG_DIR if tensorboard installed
+                    device="cpu",
                 )
             elif self.algorithm == "DQN":
                 DQN = _load_sb3_class("DQN")
+
+                # DQN only supports Discrete action space, but env uses MultiDiscrete.
+                # Wrap the env if it has a MultiDiscrete space.
+                wrapped_env = self.env
+                if hasattr(self.env, "action_space") and isinstance(self.env.action_space, gym.spaces.MultiDiscrete):
+                    print("ℹ Wrapping MultiDiscrete action space to Discrete for DQN.")
+                    wrapped_env = FlattenActionWrapper(self.env)
+
+                total_ts = total_timesteps or AIConfig.TOTAL_TIMESTEPS
                 self.model = DQN(
+                    "MlpPolicy",
+                    wrapped_env,
+                    learning_rate=AIConfig.LEARNING_RATE,
+                    gamma=AIConfig.GAMMA,
+                    batch_size=AIConfig.BATCH_SIZE,
+                    # Key fix: start learning after 1000 steps (not 50,000 default)
+                    learning_starts=1_000,
+                    # Buffer size: keep reasonable to avoid OOM
+                    buffer_size=min(50_000, total_ts),
+                    # Exploration: start fully random, decay to 5% by 50% of training
+                    exploration_initial_eps=1.0,
+                    exploration_final_eps=0.05,
+                    exploration_fraction=0.5,
+                    # Update target network every 500 steps
+                    target_update_interval=500,
+                    # Train more frequently (every step instead of every 4)
+                    train_freq=1,
+                    verbose=1,
+                    tensorboard_log=None,
+                    device="cpu",
+                )
+            elif self.algorithm == "A2C":
+                A2C = _load_sb3_class("A2C")
+                self.model = A2C(
                     "MlpPolicy",
                     self.env,
                     learning_rate=AIConfig.LEARNING_RATE,
                     gamma=AIConfig.GAMMA,
-                    batch_size=AIConfig.BATCH_SIZE,
                     verbose=1,
-                    tensorboard_log=AIConfig.LOG_DIR,
+                    tensorboard_log=None,
+                    device="cpu",
                 )
+            elif self.algorithm == "RULE_BASED":
+                print("✓ Rule-based agent does not require training.")
+                self.model = None
+                return True
             else:
                 raise ValueError(f"Unknown algorithm: {self.algorithm}")
-
-            self.model.learn(total_timesteps=total_timesteps)
-            print(f"✓ Training complete ({total_timesteps} steps)")
-            return True
-
         except ImportError:
             print("⚠ stable-baselines3 not installed. Run: pip install stable-baselines3")
             return False
 
+        try:
+            self.model.learn(total_timesteps=total_timesteps, callback=callback)
+            print(f"✓ Training complete ({total_timesteps} steps)")
+            return True
+        except Exception as e:
+            print(f"⚠ Training error: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
     def predict(self, observation):
-        """Predict action from observation."""
+        """Predict action from observation.
+
+        For DQN, the model outputs a flat scalar (from FlattenActionWrapper).
+        This method converts it back to a MultiDiscrete array before returning,
+        so env.step() always receives the expected array format.
+        """
         if self.model is not None:
             action, _ = self.model.predict(observation, deterministic=True)
+
+            # DQN returns a flat integer — convert back to MultiDiscrete array
+            if self.algorithm == "DQN" and hasattr(self.env, "action_space"):
+                import numpy as np
+                import gymnasium as gym
+                env_space = self.env.action_space
+                if isinstance(env_space, gym.spaces.MultiDiscrete):
+                    nvec = env_space.nvec
+                    flat = int(action)
+                    res = []
+                    for n in reversed(nvec):
+                        res.append(flat % n)
+                        flat //= n
+                    action = np.array(list(reversed(res)), dtype=np.int64)
+
             return action
 
-        # Fallback: rule-based action (choose phase with longest queue)
+        # Fallback: rule-based action
         return self._rule_based_action(observation)
 
     def _rule_based_action(self, observation):
-        """Simple rule-based fallback when no trained model."""
+        """Smart rule-based fallback when no trained model.
+        
+        Strategy:
+        - For each junction, look at queue_length and phase_duration.
+        - If the current phase has been active too long AND queue is high,
+          advance to the next phase to give other directions green time.
+        - Otherwise, hold the current phase.
+        """
         n_features = len(AIConfig.STATE_FEATURES)
         n_junctions = len(observation) // n_features if n_features > 0 else 1
         actions = []
+
         for j in range(n_junctions):
             offset = j * n_features
-            queue = observation[offset] if offset < len(observation) else 0
-            # If queue is high, switch phase
-            current_phase = observation[offset + 4] if offset + 4 < len(observation) else 0
-            phase_dur = observation[offset + 5] if offset + 5 < len(observation) else 0
+            if offset + n_features > len(observation):
+                actions.append(0)
+                continue
 
-            if phase_dur > 0.5 and queue > 0.3:  # Phase been active too long with high queue
-                actions.append(int(current_phase * 3 + 1) % 4)
+            queue_norm = observation[offset]          # queue_length (0-1)
+            wait_norm = observation[offset + 1]       # waiting_time (0-1)
+            phase_norm = observation[offset + 4]      # current_phase (0-1)
+            phase_dur_norm = observation[offset + 5]  # phase_duration (0-1)
+
+            # Reconstruct approximate phase index (reverse of normalization)
+            # phase_norm = current_phase / max(1, phase_count - 1)
+            # Assume 4 phases as default
+            n_phases = 4
+            current_phase_idx = round(phase_norm * max(1, n_phases - 1))
+
+            # Decision logic:
+            # 1. If phase has run for a long time (> 50% of max = 30s)
+            #    AND there's significant queuing → switch to next phase
+            # 2. If waiting time is very high → force switch
+            # 3. Otherwise → hold current phase
+            should_switch = False
+            if phase_dur_norm > 0.5 and queue_norm > 0.3:
+                should_switch = True
+            if wait_norm > 0.6:
+                should_switch = True
+
+            if should_switch:
+                next_phase = (current_phase_idx + 1) % n_phases
+                actions.append(next_phase)
             else:
-                actions.append(int(current_phase * 3) % 4)
+                actions.append(current_phase_idx)
 
         return np.array(actions)
 
@@ -107,6 +224,11 @@ class TrafficAgent:
 
     def load(self, path=None):
         """Load a trained model."""
+        if self.algorithm == "RULE_BASED":
+            self.model = None
+            print("✓ Loaded Rule-based agent.")
+            return True
+            
         path = path or os.path.join(AIConfig.MODEL_DIR, f"{self.algorithm.lower()}_traffic")
         try:
             if self.algorithm == "PPO":
@@ -114,9 +236,16 @@ class TrafficAgent:
                 self.model = PPO.load(path, env=self.env)
             elif self.algorithm == "DQN":
                 DQN = _load_sb3_class("DQN")
-                self.model = DQN.load(path, env=self.env)
+                wrapped_env = self.env
+                if hasattr(self.env, "action_space") and isinstance(self.env.action_space, gym.spaces.MultiDiscrete):
+                    wrapped_env = FlattenActionWrapper(self.env)
+                self.model = DQN.load(path, env=wrapped_env)
+            elif self.algorithm == "A2C":
+                A2C = _load_sb3_class("A2C")
+                self.model = A2C.load(path, env=self.env)
             print(f"✓ Model loaded from {path}")
             return True
         except Exception as e:
-            print(f"⚠ Failed to load model: {e}")
+            print(f"⚠ Failed to load model for {self.algorithm}: {e}")
+            self.model = None
             return False

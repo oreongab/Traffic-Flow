@@ -13,6 +13,7 @@ pyproj==3.*
 opencv-python-headless==4.*
 numpy>=1.26
 sumolib>=1.20
+traci>=1.20
 
 # YOLO (vehicle detection)
 ultralytics>=8.0

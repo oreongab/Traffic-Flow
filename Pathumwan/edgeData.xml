@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2026-04-21T14:09:51.384259+07:00 by Eclipse SUMO sumo 1.26.0
+<!-- generated on 2026-04-30T11:53:10.610790+07:00 by Eclipse SUMO sumo 1.26.0
 <sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
-        <net-file value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.net.xml"/>
-        <route-files value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.passenger.rou.xml,C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.motorcycle.rou.xml,C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.truck.rou.xml,C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.bus.rou.xml"/>
-        <additional-files value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.poly.xml,C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\output.add.xml"/>
+        <net-file value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.net.xml"/>
+        <route-files value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.passenger.rou.xml,C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.motorcycle.rou.xml,C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.truck.rou.xml,C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.bus.rou.xml"/>
+        <additional-files value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.poly.xml,C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\output.add.xml"/>
     </input>
 
     <output>
-        <tripinfo-output value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\tripinfos.xml"/>
-        <statistic-output value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\stats.xml"/>
+        <tripinfo-output value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\tripinfos.xml"/>
+        <statistic-output value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\stats.xml"/>
     </output>
 
     <time>
@@ -24,6 +24,7 @@
         <ignore-route-errors value="true"/>
         <time-to-teleport value="300"/>
         <time-to-teleport.highways value="0"/>
+        <waiting-time-memory value="300"/>
         <tls.actuated.jam-threshold value="30"/>
     </processing>
 
@@ -40,14 +41,11 @@
     </report>
 
     <traci_server>
-        <remote-port value="54324"/>
+        <remote-port value="54762"/>
     </traci_server>
 
     <gui_only>
-        <gui-settings-file value="C:\Users\Pattama\OneDrive\Documents\capstone\Pathumwan\backend\..\osm.view.xml"/>
-        <quit-on-end value="false"/>
-        <start value="true"/>
-        <delay value="50"/>
+        <gui-settings-file value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.view.xml"/>
     </gui_only>
 
 </sumoConfiguration>

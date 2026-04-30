@@ -1,0 +1,1552 @@
+{
+  "algorithm": "DQN",
+  "total_timesteps": 0,
+  "training_time_seconds": 0.0,
+  "data_source": {
+    "description": "Pathumwan traffic — otp_66_05.csv (2022) + opendata-jan_ok.xlsx (2023)",
+    "vehicle_proportions": {
+      "passenger": 0.706,
+      "van": 0.237,
+      "bus": 0.02,
+      "truck": 0.01,
+      "motorcycle": 0.027
+    },
+    "station_count": 7
+  },
+  "reward_weights": {
+    "waiting_time": -0.4,
+    "throughput": 1.0,
+    "avg_speed": 0.3,
+    "queue_length": -0.3,
+    "phase_switch": -0.1,
+    "emergency_penalty": -2.0
+  },
+  "hyperparameters": {
+    "learning_rate": 0.0003,
+    "gamma": 0.99,
+    "batch_size": 256,
+    "n_steps": 2048,
+    "n_epochs": 10,
+    "entropy_coef": 0.02,
+    "action_interval": 10,
+    "yellow_time": 3,
+    "max_episode_steps": 3600
+  },
+  "training_summary": {
+    "total_episodes": 150,
+    "avg_reward": 331.5724,
+    "best_reward": 388.8961,
+    "worst_reward": 246.1447,
+    "avg_reward_first_n": 290.2373,
+    "avg_reward_last_n": 348.3857,
+    "reward_improvement_pct": 20.0,
+    "avg_throughput": 3233.1,
+    "avg_waiting_time": 30.6,
+    "best_throughput": 3893,
+    "worst_waiting_time": 304.0
+  },
+  "evaluation_summary": {},
+  "training_episodes": [
+    {
+      "episode": 1,
+      "phase": "training",
+      "timestamp": 1777482128.9505439,
+      "steps": 3601,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2962,
+      "episode_throughput": 2922,
+      "episode_reward": 297.9148
+    },
+    {
+      "episode": 2,
+      "phase": "training",
+      "timestamp": 1777482317.8219397,
+      "steps": 3605,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3068,
+      "episode_throughput": 2871,
+      "episode_reward": 295.1676
+    },
+    {
+      "episode": 3,
+      "phase": "training",
+      "timestamp": 1777482510.067393,
+      "steps": 3608,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3091,
+      "episode_throughput": 2858,
+      "episode_reward": 271.2862
+    },
+    {
+      "episode": 4,
+      "phase": "training",
+      "timestamp": 1777482699.4555392,
+      "steps": 3603,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2801,
+      "episode_throughput": 3082,
+      "episode_reward": 304.2591
+    },
+    {
+      "episode": 5,
+      "phase": "training",
+      "timestamp": 1777482891.4044735,
+      "steps": 3606,
+      "total_waiting_time": 17.0,
+      "vehicle_count": 3017,
+      "episode_throughput": 2948,
+      "episode_reward": 299.3947
+    },
+    {
+      "episode": 6,
+      "phase": "training",
+      "timestamp": 1777483079.2874424,
+      "steps": 3605,
+      "total_waiting_time": 23.0,
+      "vehicle_count": 2842,
+      "episode_throughput": 3048,
+      "episode_reward": 305.6903
+    },
+    {
+      "episode": 7,
+      "phase": "training",
+      "timestamp": 1777483265.2995253,
+      "steps": 3607,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3164,
+      "episode_throughput": 2830,
+      "episode_reward": 278.4078
+    },
+    {
+      "episode": 8,
+      "phase": "training",
+      "timestamp": 1777483448.8829207,
+      "steps": 3606,
+      "total_waiting_time": 19.0,
+      "vehicle_count": 3014,
+      "episode_throughput": 2861,
+      "episode_reward": 296.8675
+    },
+    {
+      "episode": 9,
+      "phase": "training",
+      "timestamp": 1777483645.3687117,
+      "steps": 3608,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3317,
+      "episode_throughput": 2667,
+      "episode_reward": 246.1447
+    },
+    {
+      "episode": 10,
+      "phase": "training",
+      "timestamp": 1777483830.008637,
+      "steps": 3600,
+      "total_waiting_time": 9.0,
+      "vehicle_count": 2988,
+      "episode_throughput": 3011,
+      "episode_reward": 307.2402
+    },
+    {
+      "episode": 11,
+      "phase": "training",
+      "timestamp": 1777484018.2889967,
+      "steps": 3609,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3067,
+      "episode_throughput": 2884,
+      "episode_reward": 278.5954
+    },
+    {
+      "episode": 12,
+      "phase": "training",
+      "timestamp": 1777484213.117358,
+      "steps": 3611,
+      "total_waiting_time": 119.0,
+      "vehicle_count": 3139,
+      "episode_throughput": 2828,
+      "episode_reward": 300.4622
+    },
+    {
+      "episode": 13,
+      "phase": "training",
+      "timestamp": 1777484400.8681,
+      "steps": 3612,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2989,
+      "episode_throughput": 2963,
+      "episode_reward": 307.7701
+    },
+    {
+      "episode": 14,
+      "phase": "training",
+      "timestamp": 1777484585.2456203,
+      "steps": 3604,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2777,
+      "episode_throughput": 3186,
+      "episode_reward": 313.7731
+    },
+    {
+      "episode": 15,
+      "phase": "training",
+      "timestamp": 1777484770.5025558,
+      "steps": 3605,
+      "total_waiting_time": 304.0,
+      "vehicle_count": 2965,
+      "episode_throughput": 3028,
+      "episode_reward": 304.6525
+    },
+    {
+      "episode": 16,
+      "phase": "training",
+      "timestamp": 1777484960.1567023,
+      "steps": 3609,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3054,
+      "episode_throughput": 2992,
+      "episode_reward": 313.7164
+    },
+    {
+      "episode": 17,
+      "phase": "training",
+      "timestamp": 1777485149.2485447,
+      "steps": 3600,
+      "total_waiting_time": 14.0,
+      "vehicle_count": 3090,
+      "episode_throughput": 2913,
+      "episode_reward": 303.2147
+    },
+    {
+      "episode": 18,
+      "phase": "training",
+      "timestamp": 1777485336.7215478,
+      "steps": 3600,
+      "total_waiting_time": 12.0,
+      "vehicle_count": 2997,
+      "episode_throughput": 3031,
+      "episode_reward": 311.0966
+    },
+    {
+      "episode": 19,
+      "phase": "training",
+      "timestamp": 1777485529.621417,
+      "steps": 3605,
+      "total_waiting_time": 16.0,
+      "vehicle_count": 3190,
+      "episode_throughput": 2856,
+      "episode_reward": 301.3744
+    },
+    {
+      "episode": 20,
+      "phase": "training",
+      "timestamp": 1777485720.7256556,
+      "steps": 3610,
+      "total_waiting_time": 2.0,
+      "vehicle_count": 3087,
+      "episode_throughput": 2943,
+      "episode_reward": 309.1661
+    },
+    {
+      "episode": 21,
+      "phase": "training",
+      "timestamp": 1777485912.588503,
+      "steps": 3606,
+      "total_waiting_time": 13.0,
+      "vehicle_count": 3034,
+      "episode_throughput": 3029,
+      "episode_reward": 311.8953
+    },
+    {
+      "episode": 22,
+      "phase": "training",
+      "timestamp": 1777486107.6030912,
+      "steps": 3607,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3070,
+      "episode_throughput": 2958,
+      "episode_reward": 305.3753
+    },
+    {
+      "episode": 23,
+      "phase": "training",
+      "timestamp": 1777486298.5390875,
+      "steps": 3606,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3139,
+      "episode_throughput": 2875,
+      "episode_reward": 265.8451
+    },
+    {
+      "episode": 24,
+      "phase": "training",
+      "timestamp": 1777486488.5239818,
+      "steps": 3600,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2876,
+      "episode_throughput": 3090,
+      "episode_reward": 314.2338
+    },
+    {
+      "episode": 25,
+      "phase": "training",
+      "timestamp": 1777486687.4147832,
+      "steps": 3610,
+      "total_waiting_time": 257.0,
+      "vehicle_count": 3252,
+      "episode_throughput": 2768,
+      "episode_reward": 289.0241
+    },
+    {
+      "episode": 26,
+      "phase": "training",
+      "timestamp": 1777486875.4976215,
+      "steps": 3603,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2985,
+      "episode_throughput": 3054,
+      "episode_reward": 313.4899
+    },
+    {
+      "episode": 27,
+      "phase": "training",
+      "timestamp": 1777487064.9638686,
+      "steps": 3602,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3097,
+      "episode_throughput": 2897,
+      "episode_reward": 309.223
+    },
+    {
+      "episode": 28,
+      "phase": "training",
+      "timestamp": 1777487257.520389,
+      "steps": 3608,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2715,
+      "episode_throughput": 3326,
+      "episode_reward": 327.1376
+    },
+    {
+      "episode": 29,
+      "phase": "training",
+      "timestamp": 1777487449.4032443,
+      "steps": 3605,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3032,
+      "episode_throughput": 3001,
+      "episode_reward": 312.7447
+    },
+    {
+      "episode": 30,
+      "phase": "training",
+      "timestamp": 1777487640.3964508,
+      "steps": 3611,
+      "total_waiting_time": 97.0,
+      "vehicle_count": 2898,
+      "episode_throughput": 3091,
+      "episode_reward": 317.6275
+    },
+    {
+      "episode": 31,
+      "phase": "training",
+      "timestamp": 1777487833.4120262,
+      "steps": 3607,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3004,
+      "episode_throughput": 3057,
+      "episode_reward": 317.9945
+    },
+    {
+      "episode": 32,
+      "phase": "training",
+      "timestamp": 1777488022.9587083,
+      "steps": 3603,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3016,
+      "episode_throughput": 3011,
+      "episode_reward": 308.9006
+    },
+    {
+      "episode": 33,
+      "phase": "training",
+      "timestamp": 1777488216.1727684,
+      "steps": 3602,
+      "total_waiting_time": 8.0,
+      "vehicle_count": 3086,
+      "episode_throughput": 2993,
+      "episode_reward": 313.4863
+    },
+    {
+      "episode": 34,
+      "phase": "training",
+      "timestamp": 1777488415.230345,
+      "steps": 3604,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3116,
+      "episode_throughput": 3115,
+      "episode_reward": 326.1034
+    },
+    {
+      "episode": 35,
+      "phase": "training",
+      "timestamp": 1777488609.01356,
+      "steps": 3612,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2937,
+      "episode_throughput": 3209,
+      "episode_reward": 329.4093
+    },
+    {
+      "episode": 36,
+      "phase": "training",
+      "timestamp": 1777488818.366687,
+      "steps": 3612,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3191,
+      "episode_throughput": 3175,
+      "episode_reward": 342.761
+    },
+    {
+      "episode": 37,
+      "phase": "training",
+      "timestamp": 1777489017.5857382,
+      "steps": 3612,
+      "total_waiting_time": 1.0,
+      "vehicle_count": 3135,
+      "episode_throughput": 3173,
+      "episode_reward": 335.5287
+    },
+    {
+      "episode": 38,
+      "phase": "training",
+      "timestamp": 1777489228.646355,
+      "steps": 3605,
+      "total_waiting_time": 130.0,
+      "vehicle_count": 3314,
+      "episode_throughput": 3059,
+      "episode_reward": 336.2799
+    },
+    {
+      "episode": 39,
+      "phase": "training",
+      "timestamp": 1777489424.159863,
+      "steps": 3601,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2920,
+      "episode_throughput": 3324,
+      "episode_reward": 345.2552
+    },
+    {
+      "episode": 40,
+      "phase": "training",
+      "timestamp": 1777489621.4948564,
+      "steps": 3609,
+      "total_waiting_time": 2.0,
+      "vehicle_count": 2854,
+      "episode_throughput": 3315,
+      "episode_reward": 336.3034
+    },
+    {
+      "episode": 41,
+      "phase": "training",
+      "timestamp": 1777489820.3716106,
+      "steps": 3609,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2874,
+      "episode_throughput": 3381,
+      "episode_reward": 343.5093
+    },
+    {
+      "episode": 42,
+      "phase": "training",
+      "timestamp": 1777490020.6084714,
+      "steps": 3600,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3054,
+      "episode_throughput": 3265,
+      "episode_reward": 313.7411
+    },
+    {
+      "episode": 43,
+      "phase": "training",
+      "timestamp": 1777490226.3878868,
+      "steps": 3601,
+      "total_waiting_time": 17.0,
+      "vehicle_count": 3000,
+      "episode_throughput": 3372,
+      "episode_reward": 354.0928
+    },
+    {
+      "episode": 44,
+      "phase": "training",
+      "timestamp": 1777490428.6510746,
+      "steps": 3601,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2912,
+      "episode_throughput": 3294,
+      "episode_reward": 340.8079
+    },
+    {
+      "episode": 45,
+      "phase": "training",
+      "timestamp": 1777490633.8152728,
+      "steps": 3604,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3059,
+      "episode_throughput": 3249,
+      "episode_reward": 341.8786
+    },
+    {
+      "episode": 46,
+      "phase": "training",
+      "timestamp": 1777490840.3332531,
+      "steps": 3600,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3104,
+      "episode_throughput": 3222,
+      "episode_reward": 347.0864
+    },
+    {
+      "episode": 47,
+      "phase": "training",
+      "timestamp": 1777491056.5457819,
+      "steps": 3612,
+      "total_waiting_time": 30.0,
+      "vehicle_count": 3337,
+      "episode_throughput": 3053,
+      "episode_reward": 324.5538
+    },
+    {
+      "episode": 48,
+      "phase": "training",
+      "timestamp": 1777491256.5637167,
+      "steps": 3611,
+      "total_waiting_time": 6.0,
+      "vehicle_count": 2707,
+      "episode_throughput": 3562,
+      "episode_reward": 347.3341
+    },
+    {
+      "episode": 49,
+      "phase": "training",
+      "timestamp": 1777491463.067362,
+      "steps": 3603,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3021,
+      "episode_throughput": 3266,
+      "episode_reward": 325.2265
+    },
+    {
+      "episode": 50,
+      "phase": "training",
+      "timestamp": 1777491675.7481353,
+      "steps": 3603,
+      "total_waiting_time": 10.0,
+      "vehicle_count": 3252,
+      "episode_throughput": 3113,
+      "episode_reward": 319.3505
+    },
+    {
+      "episode": 51,
+      "phase": "training",
+      "timestamp": 1777491881.9299138,
+      "steps": 3603,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3046,
+      "episode_throughput": 3301,
+      "episode_reward": 344.3101
+    },
+    {
+      "episode": 52,
+      "phase": "training",
+      "timestamp": 1777492088.833363,
+      "steps": 3600,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3028,
+      "episode_throughput": 3297,
+      "episode_reward": 338.1006
+    },
+    {
+      "episode": 53,
+      "phase": "training",
+      "timestamp": 1777492296.289808,
+      "steps": 3602,
+      "total_waiting_time": 43.0,
+      "vehicle_count": 3093,
+      "episode_throughput": 3257,
+      "episode_reward": 344.1773
+    },
+    {
+      "episode": 54,
+      "phase": "training",
+      "timestamp": 1777492505.8687716,
+      "steps": 3607,
+      "total_waiting_time": 12.0,
+      "vehicle_count": 3130,
+      "episode_throughput": 3210,
+      "episode_reward": 331.8188
+    },
+    {
+      "episode": 55,
+      "phase": "training",
+      "timestamp": 1777492714.069174,
+      "steps": 3603,
+      "total_waiting_time": 21.0,
+      "vehicle_count": 3121,
+      "episode_throughput": 3217,
+      "episode_reward": 341.4985
+    },
+    {
+      "episode": 56,
+      "phase": "training",
+      "timestamp": 1777492917.9459305,
+      "steps": 3600,
+      "total_waiting_time": 118.0,
+      "vehicle_count": 2834,
+      "episode_throughput": 3363,
+      "episode_reward": 347.2239
+    },
+    {
+      "episode": 57,
+      "phase": "training",
+      "timestamp": 1777493128.376729,
+      "steps": 3604,
+      "total_waiting_time": 15.0,
+      "vehicle_count": 3080,
+      "episode_throughput": 3306,
+      "episode_reward": 348.3157
+    },
+    {
+      "episode": 58,
+      "phase": "training",
+      "timestamp": 1777493335.910718,
+      "steps": 3603,
+      "total_waiting_time": 13.0,
+      "vehicle_count": 3008,
+      "episode_throughput": 3233,
+      "episode_reward": 337.2642
+    },
+    {
+      "episode": 59,
+      "phase": "training",
+      "timestamp": 1777493536.893541,
+      "steps": 3602,
+      "total_waiting_time": 144.0,
+      "vehicle_count": 2917,
+      "episode_throughput": 3302,
+      "episode_reward": 338.1618
+    },
+    {
+      "episode": 60,
+      "phase": "training",
+      "timestamp": 1777493740.383324,
+      "steps": 3604,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3011,
+      "episode_throughput": 3234,
+      "episode_reward": 337.9607
+    },
+    {
+      "episode": 61,
+      "phase": "training",
+      "timestamp": 1777493940.011099,
+      "steps": 3606,
+      "total_waiting_time": 2.0,
+      "vehicle_count": 2775,
+      "episode_throughput": 3401,
+      "episode_reward": 326.2961
+    },
+    {
+      "episode": 62,
+      "phase": "training",
+      "timestamp": 1777494142.796412,
+      "steps": 3605,
+      "total_waiting_time": 40.0,
+      "vehicle_count": 2976,
+      "episode_throughput": 3272,
+      "episode_reward": 340.6553
+    },
+    {
+      "episode": 63,
+      "phase": "training",
+      "timestamp": 1777494348.1292224,
+      "steps": 3604,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3032,
+      "episode_throughput": 3302,
+      "episode_reward": 347.2487
+    },
+    {
+      "episode": 64,
+      "phase": "training",
+      "timestamp": 1777494561.488171,
+      "steps": 3609,
+      "total_waiting_time": 9.0,
+      "vehicle_count": 3073,
+      "episode_throughput": 3223,
+      "episode_reward": 318.0356
+    },
+    {
+      "episode": 65,
+      "phase": "training",
+      "timestamp": 1777494769.7216027,
+      "steps": 3608,
+      "total_waiting_time": 21.0,
+      "vehicle_count": 3113,
+      "episode_throughput": 3190,
+      "episode_reward": 337.0454
+    },
+    {
+      "episode": 66,
+      "phase": "training",
+      "timestamp": 1777494972.6354177,
+      "steps": 3601,
+      "total_waiting_time": 8.0,
+      "vehicle_count": 2860,
+      "episode_throughput": 3480,
+      "episode_reward": 322.8155
+    },
+    {
+      "episode": 67,
+      "phase": "training",
+      "timestamp": 1777495179.3792627,
+      "steps": 3604,
+      "total_waiting_time": 21.0,
+      "vehicle_count": 3160,
+      "episode_throughput": 3120,
+      "episode_reward": 338.5551
+    },
+    {
+      "episode": 68,
+      "phase": "training",
+      "timestamp": 1777495386.805392,
+      "steps": 3601,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3058,
+      "episode_throughput": 3278,
+      "episode_reward": 315.3045
+    },
+    {
+      "episode": 69,
+      "phase": "training",
+      "timestamp": 1777495594.4658208,
+      "steps": 3605,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3324,
+      "episode_throughput": 2928,
+      "episode_reward": 311.4094
+    },
+    {
+      "episode": 70,
+      "phase": "training",
+      "timestamp": 1777495803.4477127,
+      "steps": 3611,
+      "total_waiting_time": 2.0,
+      "vehicle_count": 2966,
+      "episode_throughput": 3446,
+      "episode_reward": 357.2465
+    },
+    {
+      "episode": 71,
+      "phase": "training",
+      "timestamp": 1777496009.2322345,
+      "steps": 3612,
+      "total_waiting_time": 45.0,
+      "vehicle_count": 3010,
+      "episode_throughput": 3237,
+      "episode_reward": 338.1985
+    },
+    {
+      "episode": 72,
+      "phase": "training",
+      "timestamp": 1777496213.6071668,
+      "steps": 3600,
+      "total_waiting_time": 89.0,
+      "vehicle_count": 3066,
+      "episode_throughput": 3225,
+      "episode_reward": 340.4015
+    },
+    {
+      "episode": 73,
+      "phase": "training",
+      "timestamp": 1777496417.6167622,
+      "steps": 3605,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3010,
+      "episode_throughput": 3271,
+      "episode_reward": 343.9303
+    },
+    {
+      "episode": 74,
+      "phase": "training",
+      "timestamp": 1777496624.0046554,
+      "steps": 3612,
+      "total_waiting_time": 16.0,
+      "vehicle_count": 2684,
+      "episode_throughput": 3693,
+      "episode_reward": 372.9513
+    },
+    {
+      "episode": 75,
+      "phase": "training",
+      "timestamp": 1777496832.106343,
+      "steps": 3600,
+      "total_waiting_time": 11.0,
+      "vehicle_count": 3099,
+      "episode_throughput": 3327,
+      "episode_reward": 352.1984
+    },
+    {
+      "episode": 76,
+      "phase": "training",
+      "timestamp": 1777497035.088099,
+      "steps": 3609,
+      "total_waiting_time": 3.0,
+      "vehicle_count": 2684,
+      "episode_throughput": 3591,
+      "episode_reward": 358.8085
+    },
+    {
+      "episode": 77,
+      "phase": "training",
+      "timestamp": 1777497242.8005037,
+      "steps": 3607,
+      "total_waiting_time": 1.0,
+      "vehicle_count": 3167,
+      "episode_throughput": 3211,
+      "episode_reward": 345.3551
+    },
+    {
+      "episode": 78,
+      "phase": "training",
+      "timestamp": 1777497450.8249867,
+      "steps": 3608,
+      "total_waiting_time": 14.0,
+      "vehicle_count": 3085,
+      "episode_throughput": 3290,
+      "episode_reward": 318.668
+    },
+    {
+      "episode": 79,
+      "phase": "training",
+      "timestamp": 1777497654.836512,
+      "steps": 3608,
+      "total_waiting_time": 27.0,
+      "vehicle_count": 2948,
+      "episode_throughput": 3345,
+      "episode_reward": 318.7556
+    },
+    {
+      "episode": 80,
+      "phase": "training",
+      "timestamp": 1777497865.0385635,
+      "steps": 3600,
+      "total_waiting_time": 12.0,
+      "vehicle_count": 3164,
+      "episode_throughput": 3269,
+      "episode_reward": 346.8771
+    },
+    {
+      "episode": 81,
+      "phase": "training",
+      "timestamp": 1777498067.1985042,
+      "steps": 3603,
+      "total_waiting_time": 24.0,
+      "vehicle_count": 2912,
+      "episode_throughput": 3373,
+      "episode_reward": 348.8232
+    },
+    {
+      "episode": 82,
+      "phase": "training",
+      "timestamp": 1777498274.713536,
+      "steps": 3606,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3018,
+      "episode_throughput": 3362,
+      "episode_reward": 331.378
+    },
+    {
+      "episode": 83,
+      "phase": "training",
+      "timestamp": 1777498474.4503314,
+      "steps": 3611,
+      "total_waiting_time": 35.0,
+      "vehicle_count": 2905,
+      "episode_throughput": 3295,
+      "episode_reward": 340.7313
+    },
+    {
+      "episode": 84,
+      "phase": "training",
+      "timestamp": 1777498679.956039,
+      "steps": 3606,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2983,
+      "episode_throughput": 3325,
+      "episode_reward": 345.2746
+    },
+    {
+      "episode": 85,
+      "phase": "training",
+      "timestamp": 1777498888.8071308,
+      "steps": 3608,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3159,
+      "episode_throughput": 3277,
+      "episode_reward": 291.5095
+    },
+    {
+      "episode": 86,
+      "phase": "training",
+      "timestamp": 1777499096.37544,
+      "steps": 3605,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3049,
+      "episode_throughput": 3272,
+      "episode_reward": 347.2207
+    },
+    {
+      "episode": 87,
+      "phase": "training",
+      "timestamp": 1777499316.740074,
+      "steps": 3600,
+      "total_waiting_time": 242.0,
+      "vehicle_count": 3361,
+      "episode_throughput": 3091,
+      "episode_reward": 337.7997
+    },
+    {
+      "episode": 88,
+      "phase": "training",
+      "timestamp": 1777499524.34219,
+      "steps": 3600,
+      "total_waiting_time": 8.0,
+      "vehicle_count": 3030,
+      "episode_throughput": 3284,
+      "episode_reward": 322.4646
+    },
+    {
+      "episode": 89,
+      "phase": "training",
+      "timestamp": 1777499733.9549122,
+      "steps": 3608,
+      "total_waiting_time": 6.0,
+      "vehicle_count": 3072,
+      "episode_throughput": 3326,
+      "episode_reward": 352.1221
+    },
+    {
+      "episode": 90,
+      "phase": "training",
+      "timestamp": 1777499942.9805994,
+      "steps": 3605,
+      "total_waiting_time": 78.0,
+      "vehicle_count": 3085,
+      "episode_throughput": 3320,
+      "episode_reward": 323.1234
+    },
+    {
+      "episode": 91,
+      "phase": "training",
+      "timestamp": 1777500148.1278245,
+      "steps": 3612,
+      "total_waiting_time": 36.0,
+      "vehicle_count": 2854,
+      "episode_throughput": 3544,
+      "episode_reward": 359.5793
+    },
+    {
+      "episode": 92,
+      "phase": "training",
+      "timestamp": 1777500365.0076828,
+      "steps": 3603,
+      "total_waiting_time": 240.0,
+      "vehicle_count": 3167,
+      "episode_throughput": 3292,
+      "episode_reward": 355.5897
+    },
+    {
+      "episode": 93,
+      "phase": "training",
+      "timestamp": 1777500568.9256299,
+      "steps": 3607,
+      "total_waiting_time": 4.0,
+      "vehicle_count": 2851,
+      "episode_throughput": 3419,
+      "episode_reward": 349.2781
+    },
+    {
+      "episode": 94,
+      "phase": "training",
+      "timestamp": 1777500772.8922257,
+      "steps": 3600,
+      "total_waiting_time": 39.0,
+      "vehicle_count": 3054,
+      "episode_throughput": 3169,
+      "episode_reward": 340.721
+    },
+    {
+      "episode": 95,
+      "phase": "training",
+      "timestamp": 1777500985.7978354,
+      "steps": 3610,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3194,
+      "episode_throughput": 3278,
+      "episode_reward": 353.6735
+    },
+    {
+      "episode": 96,
+      "phase": "training",
+      "timestamp": 1777501193.5763571,
+      "steps": 3609,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3036,
+      "episode_throughput": 3362,
+      "episode_reward": 342.3709
+    },
+    {
+      "episode": 97,
+      "phase": "training",
+      "timestamp": 1777501408.5169024,
+      "steps": 3607,
+      "total_waiting_time": 16.0,
+      "vehicle_count": 3343,
+      "episode_throughput": 2960,
+      "episode_reward": 333.0058
+    },
+    {
+      "episode": 98,
+      "phase": "training",
+      "timestamp": 1777501616.681447,
+      "steps": 3604,
+      "total_waiting_time": 72.0,
+      "vehicle_count": 2995,
+      "episode_throughput": 3359,
+      "episode_reward": 354.4809
+    },
+    {
+      "episode": 99,
+      "phase": "training",
+      "timestamp": 1777501820.4122574,
+      "steps": 3601,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2804,
+      "episode_throughput": 3559,
+      "episode_reward": 355.3519
+    },
+    {
+      "episode": 100,
+      "phase": "training",
+      "timestamp": 1777502028.7458587,
+      "steps": 3608,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3076,
+      "episode_throughput": 3203,
+      "episode_reward": 321.9553
+    },
+    {
+      "episode": 101,
+      "phase": "training",
+      "timestamp": 1777502238.7493823,
+      "steps": 3612,
+      "total_waiting_time": 136.0,
+      "vehicle_count": 3213,
+      "episode_throughput": 3135,
+      "episode_reward": 338.3257
+    },
+    {
+      "episode": 102,
+      "phase": "training",
+      "timestamp": 1777502446.2682445,
+      "steps": 3605,
+      "total_waiting_time": 66.0,
+      "vehicle_count": 3106,
+      "episode_throughput": 3140,
+      "episode_reward": 337.5727
+    },
+    {
+      "episode": 103,
+      "phase": "training",
+      "timestamp": 1777502654.376915,
+      "steps": 3606,
+      "total_waiting_time": 58.0,
+      "vehicle_count": 2948,
+      "episode_throughput": 3410,
+      "episode_reward": 338.6399
+    },
+    {
+      "episode": 104,
+      "phase": "training",
+      "timestamp": 1777502864.0287073,
+      "steps": 3603,
+      "total_waiting_time": 22.0,
+      "vehicle_count": 3173,
+      "episode_throughput": 3281,
+      "episode_reward": 351.4878
+    },
+    {
+      "episode": 105,
+      "phase": "training",
+      "timestamp": 1777503073.620384,
+      "steps": 3608,
+      "total_waiting_time": 26.0,
+      "vehicle_count": 3220,
+      "episode_throughput": 3186,
+      "episode_reward": 311.3689
+    },
+    {
+      "episode": 106,
+      "phase": "training",
+      "timestamp": 1777503285.7601864,
+      "steps": 3600,
+      "total_waiting_time": 22.0,
+      "vehicle_count": 3075,
+      "episode_throughput": 3365,
+      "episode_reward": 356.1259
+    },
+    {
+      "episode": 107,
+      "phase": "training",
+      "timestamp": 1777503493.9256356,
+      "steps": 3601,
+      "total_waiting_time": 27.0,
+      "vehicle_count": 3172,
+      "episode_throughput": 3158,
+      "episode_reward": 345.9201
+    },
+    {
+      "episode": 108,
+      "phase": "training",
+      "timestamp": 1777503700.1361651,
+      "steps": 3602,
+      "total_waiting_time": 21.0,
+      "vehicle_count": 3100,
+      "episode_throughput": 3311,
+      "episode_reward": 350.3379
+    },
+    {
+      "episode": 109,
+      "phase": "training",
+      "timestamp": 1777503904.986416,
+      "steps": 3606,
+      "total_waiting_time": 30.0,
+      "vehicle_count": 3002,
+      "episode_throughput": 3299,
+      "episode_reward": 343.2625
+    },
+    {
+      "episode": 110,
+      "phase": "training",
+      "timestamp": 1777504118.4506497,
+      "steps": 3601,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3051,
+      "episode_throughput": 3481,
+      "episode_reward": 365.2945
+    },
+    {
+      "episode": 111,
+      "phase": "training",
+      "timestamp": 1777504332.3645804,
+      "steps": 3602,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3097,
+      "episode_throughput": 3374,
+      "episode_reward": 357.7171
+    },
+    {
+      "episode": 112,
+      "phase": "training",
+      "timestamp": 1777504541.284936,
+      "steps": 3600,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3139,
+      "episode_throughput": 3330,
+      "episode_reward": 333.2205
+    },
+    {
+      "episode": 113,
+      "phase": "training",
+      "timestamp": 1777504751.0399537,
+      "steps": 3606,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2937,
+      "episode_throughput": 3554,
+      "episode_reward": 363.3537
+    },
+    {
+      "episode": 114,
+      "phase": "training",
+      "timestamp": 1777504954.8382058,
+      "steps": 3600,
+      "total_waiting_time": 134.0,
+      "vehicle_count": 2936,
+      "episode_throughput": 3386,
+      "episode_reward": 340.7165
+    },
+    {
+      "episode": 115,
+      "phase": "training",
+      "timestamp": 1777505160.4010715,
+      "steps": 3609,
+      "total_waiting_time": 156.0,
+      "vehicle_count": 2988,
+      "episode_throughput": 3269,
+      "episode_reward": 346.2111
+    },
+    {
+      "episode": 116,
+      "phase": "training",
+      "timestamp": 1777505371.672763,
+      "steps": 3602,
+      "total_waiting_time": 20.0,
+      "vehicle_count": 3079,
+      "episode_throughput": 3447,
+      "episode_reward": 359.8739
+    },
+    {
+      "episode": 117,
+      "phase": "training",
+      "timestamp": 1777505591.7107575,
+      "steps": 3605,
+      "total_waiting_time": 126.0,
+      "vehicle_count": 3235,
+      "episode_throughput": 3311,
+      "episode_reward": 364.7779
+    },
+    {
+      "episode": 118,
+      "phase": "training",
+      "timestamp": 1777505805.9798453,
+      "steps": 3603,
+      "total_waiting_time": 13.0,
+      "vehicle_count": 3279,
+      "episode_throughput": 3078,
+      "episode_reward": 326.576
+    },
+    {
+      "episode": 119,
+      "phase": "training",
+      "timestamp": 1777506029.2824924,
+      "steps": 3603,
+      "total_waiting_time": 155.0,
+      "vehicle_count": 3530,
+      "episode_throughput": 2877,
+      "episode_reward": 319.7054
+    },
+    {
+      "episode": 120,
+      "phase": "training",
+      "timestamp": 1777506246.2991302,
+      "steps": 3600,
+      "total_waiting_time": 245.0,
+      "vehicle_count": 3284,
+      "episode_throughput": 3190,
+      "episode_reward": 349.4945
+    },
+    {
+      "episode": 121,
+      "phase": "training",
+      "timestamp": 1777506451.0530002,
+      "steps": 3602,
+      "total_waiting_time": 37.0,
+      "vehicle_count": 2925,
+      "episode_throughput": 3460,
+      "episode_reward": 287.8168
+    },
+    {
+      "episode": 122,
+      "phase": "training",
+      "timestamp": 1777506657.5185306,
+      "steps": 3607,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 2967,
+      "episode_throughput": 3401,
+      "episode_reward": 308.8995
+    },
+    {
+      "episode": 123,
+      "phase": "training",
+      "timestamp": 1777506860.2773206,
+      "steps": 3609,
+      "total_waiting_time": 17.0,
+      "vehicle_count": 2964,
+      "episode_throughput": 3315,
+      "episode_reward": 344.3501
+    },
+    {
+      "episode": 124,
+      "phase": "training",
+      "timestamp": 1777507071.306066,
+      "steps": 3611,
+      "total_waiting_time": 69.0,
+      "vehicle_count": 2942,
+      "episode_throughput": 3562,
+      "episode_reward": 370.5741
+    },
+    {
+      "episode": 125,
+      "phase": "training",
+      "timestamp": 1777507281.7270474,
+      "steps": 3612,
+      "total_waiting_time": 52.0,
+      "vehicle_count": 3071,
+      "episode_throughput": 3338,
+      "episode_reward": 355.0581
+    },
+    {
+      "episode": 126,
+      "phase": "training",
+      "timestamp": 1777507488.9554553,
+      "steps": 3606,
+      "total_waiting_time": 18.0,
+      "vehicle_count": 2879,
+      "episode_throughput": 3524,
+      "episode_reward": 352.498
+    },
+    {
+      "episode": 127,
+      "phase": "training",
+      "timestamp": 1777507694.3629584,
+      "steps": 3600,
+      "total_waiting_time": 18.0,
+      "vehicle_count": 2720,
+      "episode_throughput": 3663,
+      "episode_reward": 312.1708
+    },
+    {
+      "episode": 128,
+      "phase": "training",
+      "timestamp": 1777507901.925417,
+      "steps": 3601,
+      "total_waiting_time": 19.0,
+      "vehicle_count": 3035,
+      "episode_throughput": 3268,
+      "episode_reward": 352.2719
+    },
+    {
+      "episode": 129,
+      "phase": "training",
+      "timestamp": 1777508107.4721787,
+      "steps": 3605,
+      "total_waiting_time": 24.0,
+      "vehicle_count": 2864,
+      "episode_throughput": 3390,
+      "episode_reward": 340.9755
+    },
+    {
+      "episode": 130,
+      "phase": "training",
+      "timestamp": 1777508311.7830715,
+      "steps": 3601,
+      "total_waiting_time": 7.0,
+      "vehicle_count": 3086,
+      "episode_throughput": 3245,
+      "episode_reward": 341.8568
+    },
+    {
+      "episode": 131,
+      "phase": "training",
+      "timestamp": 1777508513.764288,
+      "steps": 3608,
+      "total_waiting_time": 71.0,
+      "vehicle_count": 2690,
+      "episode_throughput": 3659,
+      "episode_reward": 328.1534
+    },
+    {
+      "episode": 132,
+      "phase": "training",
+      "timestamp": 1777508731.7388535,
+      "steps": 3611,
+      "total_waiting_time": 4.0,
+      "vehicle_count": 3240,
+      "episode_throughput": 3113,
+      "episode_reward": 343.5217
+    },
+    {
+      "episode": 133,
+      "phase": "training",
+      "timestamp": 1777508938.932297,
+      "steps": 3609,
+      "total_waiting_time": 1.0,
+      "vehicle_count": 3040,
+      "episode_throughput": 3333,
+      "episode_reward": 352.9628
+    },
+    {
+      "episode": 134,
+      "phase": "training",
+      "timestamp": 1777509143.5783017,
+      "steps": 3607,
+      "total_waiting_time": 15.0,
+      "vehicle_count": 3107,
+      "episode_throughput": 3133,
+      "episode_reward": 296.1006
+    },
+    {
+      "episode": 135,
+      "phase": "training",
+      "timestamp": 1777509352.8626227,
+      "steps": 3608,
+      "total_waiting_time": 122.0,
+      "vehicle_count": 2844,
+      "episode_throughput": 3568,
+      "episode_reward": 322.0021
+    },
+    {
+      "episode": 136,
+      "phase": "training",
+      "timestamp": 1777509560.622508,
+      "steps": 3609,
+      "total_waiting_time": 2.0,
+      "vehicle_count": 2955,
+      "episode_throughput": 3357,
+      "episode_reward": 351.0863
+    },
+    {
+      "episode": 137,
+      "phase": "training",
+      "timestamp": 1777509763.5851445,
+      "steps": 3602,
+      "total_waiting_time": 25.0,
+      "vehicle_count": 2992,
+      "episode_throughput": 3334,
+      "episode_reward": 336.8893
+    },
+    {
+      "episode": 138,
+      "phase": "training",
+      "timestamp": 1777509972.0445173,
+      "steps": 3602,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3066,
+      "episode_throughput": 3318,
+      "episode_reward": 339.9373
+    },
+    {
+      "episode": 139,
+      "phase": "training",
+      "timestamp": 1777510181.0155642,
+      "steps": 3609,
+      "total_waiting_time": 93.0,
+      "vehicle_count": 3079,
+      "episode_throughput": 3302,
+      "episode_reward": 356.6723
+    },
+    {
+      "episode": 140,
+      "phase": "training",
+      "timestamp": 1777510390.422245,
+      "steps": 3606,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 3144,
+      "episode_throughput": 3213,
+      "episode_reward": 329.7836
+    },
+    {
+      "episode": 141,
+      "phase": "training",
+      "timestamp": 1777510604.5097656,
+      "steps": 3607,
+      "total_waiting_time": 8.0,
+      "vehicle_count": 3007,
+      "episode_throughput": 3482,
+      "episode_reward": 340.6539
+    },
+    {
+      "episode": 142,
+      "phase": "training",
+      "timestamp": 1777510815.867731,
+      "steps": 3607,
+      "total_waiting_time": 26.0,
+      "vehicle_count": 3149,
+      "episode_throughput": 3259,
+      "episode_reward": 345.53
+    },
+    {
+      "episode": 143,
+      "phase": "training",
+      "timestamp": 1777511026.6188006,
+      "steps": 3604,
+      "total_waiting_time": 4.0,
+      "vehicle_count": 3214,
+      "episode_throughput": 3164,
+      "episode_reward": 322.5826
+    },
+    {
+      "episode": 144,
+      "phase": "training",
+      "timestamp": 1777511235.9829016,
+      "steps": 3607,
+      "total_waiting_time": 19.0,
+      "vehicle_count": 3070,
+      "episode_throughput": 3420,
+      "episode_reward": 344.5661
+    },
+    {
+      "episode": 145,
+      "phase": "training",
+      "timestamp": 1777511446.8891027,
+      "steps": 3608,
+      "total_waiting_time": 24.0,
+      "vehicle_count": 2983,
+      "episode_throughput": 3448,
+      "episode_reward": 358.9053
+    },
+    {
+      "episode": 146,
+      "phase": "training",
+      "timestamp": 1777511659.2909222,
+      "steps": 3607,
+      "total_waiting_time": 17.0,
+      "vehicle_count": 2657,
+      "episode_throughput": 3893,
+      "episode_reward": 388.8961
+    },
+    {
+      "episode": 147,
+      "phase": "training",
+      "timestamp": 1777511862.745725,
+      "steps": 3606,
+      "total_waiting_time": 2.0,
+      "vehicle_count": 2904,
+      "episode_throughput": 3392,
+      "episode_reward": 318.9302
+    },
+    {
+      "episode": 148,
+      "phase": "training",
+      "timestamp": 1777512065.225139,
+      "steps": 3609,
+      "total_waiting_time": 13.0,
+      "vehicle_count": 2984,
+      "episode_throughput": 3287,
+      "episode_reward": 348.1706
+    },
+    {
+      "episode": 149,
+      "phase": "training",
+      "timestamp": 1777512277.5384572,
+      "steps": 3608,
+      "total_waiting_time": 2.0,
+      "vehicle_count": 3202,
+      "episode_throughput": 3144,
+      "episode_reward": 350.3269
+    },
+    {
+      "episode": 150,
+      "phase": "training",
+      "timestamp": 1777512490.5261407,
+      "steps": 3609,
+      "total_waiting_time": 26.0,
+      "vehicle_count": 3041,
+      "episode_throughput": 3494,
+      "episode_reward": 365.2957
+    }
+  ],
+  "evaluation_episodes": []
+}
