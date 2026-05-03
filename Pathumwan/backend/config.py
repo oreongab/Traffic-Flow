@@ -28,9 +28,11 @@ except ImportError:
             return False
         return loaded
 
-# Load .env from backend/ directory (where the file actually lives)
+# Load .env from backend/ directory first, then parent (Pathumwan/) as fallback
 _backend_dir = os.path.dirname(os.path.abspath(__file__))
-load_dotenv(os.path.join(_backend_dir, '.env'))
+_root_dir = os.path.dirname(_backend_dir)
+load_dotenv(os.path.join(_backend_dir, '.env'))   # backend/.env (overrides)
+load_dotenv(os.path.join(_root_dir, '.env'))       # Pathumwan/.env (root)
 
 
 class Config:

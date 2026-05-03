@@ -97,8 +97,10 @@ class TrafficAgent:
                     exploration_fraction=0.5,
                     # Update target network every 500 steps
                     target_update_interval=500,
-                    # Train more frequently (every step instead of every 4)
-                    train_freq=1,
+                    # Train every 4 steps (not every step) — 4x faster than train_freq=1
+                    # Standard DQN practice: collect a few transitions before updating
+                    train_freq=4,
+                    gradient_steps=1,
                     verbose=1,
                     tensorboard_log=None,
                     device="cpu",
@@ -213,14 +215,29 @@ class TrafficAgent:
         return np.array(actions)
 
     def save(self, path=None):
-        """Save trained model."""
+        """Save trained model and companion metadata JSON."""
         if self.model is None:
             print("No model to save")
             return
         path = path or os.path.join(AIConfig.MODEL_DIR, f"{self.algorithm.lower()}_traffic")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         self.model.save(path)
-        print(f"✓ Model saved to {path}")
+
+        # Save companion metadata so benchmark can recreate the exact same env
+        import json
+        meta = {
+            "algorithm": self.algorithm,
+            "junction_ids": list(getattr(self.env, "junction_ids", [])),
+            "n_junctions": getattr(self.env, "n_junctions", 0),
+            "obs_shape": list(self.env.observation_space.shape),
+            "action_nvec": [int(n) for n in self.env.action_space.nvec]
+                if hasattr(self.env.action_space, "nvec") else [],
+        }
+        meta_path = path + "_meta.json"
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2, ensure_ascii=False)
+        print(f"✓ Model saved to {path}.zip")
+        print(f"✓ Metadata saved to {meta_path}")
 
     def load(self, path=None):
         """Load a trained model."""
@@ -228,7 +245,7 @@ class TrafficAgent:
             self.model = None
             print("✓ Loaded Rule-based agent.")
             return True
-            
+
         path = path or os.path.join(AIConfig.MODEL_DIR, f"{self.algorithm.lower()}_traffic")
         try:
             if self.algorithm == "PPO":
@@ -249,3 +266,14 @@ class TrafficAgent:
             print(f"⚠ Failed to load model for {self.algorithm}: {e}")
             self.model = None
             return False
+
+    @staticmethod
+    def load_metadata(algorithm, model_dir=None):
+        """Load companion metadata JSON for a trained model. Returns dict or None."""
+        import json
+        model_dir = model_dir or AIConfig.MODEL_DIR
+        meta_path = os.path.join(model_dir, f"{algorithm.lower()}_traffic_meta.json")
+        if not os.path.exists(meta_path):
+            return None
+        with open(meta_path, encoding="utf-8") as f:
+            return json.load(f)

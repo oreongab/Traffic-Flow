@@ -344,7 +344,7 @@ class SumoTrafficEnv(GymEnv):
         # Track episode metrics
         self._episode_reward += reward
         self._episode_throughput += arrived_count
-        self._episode_total_wait = self._total_waiting_time()
+        self._episode_total_wait += self._total_waiting_time()  # accumulate, not snapshot
 
         # Get current vehicle count cheaply
         try:
@@ -377,7 +377,12 @@ class SumoTrafficEnv(GymEnv):
         return snapshot_to_observation(snapshot)
 
     def _total_waiting_time(self):
-        """Sum waiting time across all controlled lanes (optimized)."""
+        """Sum waiting time across all controlled lanes at this step.
+        
+        Called every step and accumulated into _episode_total_wait,
+        so the episode total reflects the integrated waiting time over the full episode,
+        not just a snapshot at the end.
+        """
         total = 0.0
         traci = self.traci
         if traci is None:
