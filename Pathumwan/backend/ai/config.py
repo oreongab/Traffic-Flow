@@ -40,6 +40,9 @@ class AIConfig:
     MIN_GREEN_TIME = 10    # Minimum green phase duration (seconds)
     MAX_GREEN_TIME = 60    # Maximum green phase duration (seconds)
 
+    # Fixed-Time baseline — equal green time per phase, no adaptation
+    FIXED_GREEN_TIME = 30  # Seconds of green per phase (timer-based baseline)
+
     # Reward weights — positive values for things we WANT,
     # negative values for things we want to MINIMIZE.
     # Each reward component returns a magnitude in [0, 1].

@@ -234,7 +234,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Train traffic signal RL agent using Pathumwan traffic data"
     )
-    parser.add_argument("--algorithm", default=AIConfig.ALGORITHM, choices=["PPO", "DQN", "A2C", "RULE_BASED"])
+    parser.add_argument("--algorithm", default=AIConfig.ALGORITHM, choices=["PPO", "DQN", "A2C", "RULE_BASED", "FIXED_TIME"])
     parser.add_argument("--timesteps", type=int, default=AIConfig.TOTAL_TIMESTEPS)
     parser.add_argument("--junction-ids", nargs="+", default=None,
                         help="Junction IDs to control. If not given, auto-discovers from SUMO.")

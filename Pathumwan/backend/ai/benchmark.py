@@ -49,7 +49,7 @@ def main():
     print("=========================================")
 
     # Check which models exist
-    available_models = ["RULE_BASED"]
+    available_models = ["FIXED_TIME", "RULE_BASED"]
     for algo in ["PPO", "DQN", "A2C"]:
         model_path = os.path.join(AIConfig.MODEL_DIR, f"{algo.lower()}_traffic.zip")
         if os.path.exists(model_path):
@@ -76,7 +76,7 @@ def main():
         print(f"\n▶ Evaluating {algo}...")
 
         # Determine junction_ids to use for this model
-        if algo != "RULE_BASED":
+        if algo not in ("RULE_BASED", "FIXED_TIME"):
             meta = TrafficAgent.load_metadata(algo)
             if meta and meta.get("junction_ids"):
                 junction_ids = meta["junction_ids"]
@@ -110,8 +110,8 @@ def main():
         env = _make_env(sumo_cmd, junction_ids)
         agent = TrafficAgent(env=env, algorithm=algo)
 
-        # RULE_BASED has no weights to load
-        if algo != "RULE_BASED":
+        # RULE_BASED and FIXED_TIME have no weights to load
+        if algo not in ("RULE_BASED", "FIXED_TIME"):
             if not agent.load():
                 print(f"⚠ Failed to load {algo}, skipping...")
                 env.close()

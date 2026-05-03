@@ -120,6 +120,10 @@ class TrafficAgent:
                 print("✓ Rule-based agent does not require training.")
                 self.model = None
                 return True
+            elif self.algorithm == "FIXED_TIME":
+                print("✓ Fixed-time baseline does not require training.")
+                self.model = None
+                return True
             else:
                 raise ValueError(f"Unknown algorithm: {self.algorithm}")
         except ImportError:
@@ -161,6 +165,10 @@ class TrafficAgent:
                     action = np.array(list(reversed(res)), dtype=np.int64)
 
             return action
+
+        # Fixed-time baseline
+        if self.algorithm == "FIXED_TIME":
+            return self._fixed_time_action(observation)
 
         # Fallback: rule-based action
         return self._rule_based_action(observation)
@@ -214,6 +222,45 @@ class TrafficAgent:
 
         return np.array(actions)
 
+    def _fixed_time_action(self, observation):
+        """Fixed-time baseline: cycle through phases with equal green time.
+
+        Strategy:
+        - Each phase gets FIXED_GREEN_TIME seconds of green.
+        - When phase_duration exceeds the threshold, advance to next phase.
+        - Otherwise, hold the current phase.
+        - This mimics traditional timer-based traffic lights with no adaptation.
+        """
+        n_features = len(AIConfig.STATE_FEATURES)
+        n_junctions = len(observation) // n_features if n_features > 0 else 1
+        actions = []
+
+        # Convert fixed green time to normalized threshold
+        # phase_duration is normalized by MAX_GREEN_TIME in the observation
+        green_threshold = AIConfig.FIXED_GREEN_TIME / max(1, AIConfig.MAX_GREEN_TIME)
+
+        for j in range(n_junctions):
+            offset = j * n_features
+            if offset + n_features > len(observation):
+                actions.append(0)
+                continue
+
+            phase_norm = observation[offset + 4]      # current_phase (0-1)
+            phase_dur_norm = observation[offset + 5]  # phase_duration (0-1)
+
+            # Reconstruct approximate phase index
+            n_phases = 4
+            current_phase_idx = round(phase_norm * max(1, n_phases - 1))
+
+            # Simple rule: if green has been on >= FIXED_GREEN_TIME, switch
+            if phase_dur_norm >= green_threshold:
+                next_phase = (current_phase_idx + 1) % n_phases
+                actions.append(next_phase)
+            else:
+                actions.append(current_phase_idx)
+
+        return np.array(actions)
+
     def save(self, path=None):
         """Save trained model and companion metadata JSON."""
         if self.model is None:
@@ -241,9 +288,9 @@ class TrafficAgent:
 
     def load(self, path=None):
         """Load a trained model."""
-        if self.algorithm == "RULE_BASED":
+        if self.algorithm in ("RULE_BASED", "FIXED_TIME"):
             self.model = None
-            print("✓ Loaded Rule-based agent.")
+            print(f"✓ Loaded {self.algorithm} agent.")
             return True
 
         path = path or os.path.join(AIConfig.MODEL_DIR, f"{self.algorithm.lower()}_traffic")
