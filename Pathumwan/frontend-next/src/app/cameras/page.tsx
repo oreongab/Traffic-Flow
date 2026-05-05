@@ -125,17 +125,20 @@ export default function CamerasPage() {
                             : "border-gray-300"
                         }`}
                       />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="text-sm font-medium text-[#1e3a5f] truncate">
-                            {cameraPrimaryLabel(c)}
-                          </div>
-                          <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
-                            {c.camera_id}
-                          </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium text-[#1e3a5f] truncate" title={cameraPrimaryLabel(c)}>
+                          {cameraPrimaryLabel(c)}
                         </div>
-                        <div className="text-[11px] text-gray-400 truncate">
-                          {cameraSecondaryLabel(c)}
+                        <div className="mt-0.5 text-[11px] text-gray-400 truncate" title={cameraSecondaryLabel(c)}>
+                          {cameraSecondaryLabel(c) || "ตำแหน่งกล้องจราจร"}
+                        </div>
+                        <div className="mt-1">
+                          <span
+                            className="inline-block max-w-full truncate rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500 align-top"
+                            title={c.camera_id}
+                          >
+                            ID {c.camera_id}
+                          </span>
                         </div>
                       </div>
                     </button>
@@ -205,8 +208,8 @@ export default function CamerasPage() {
                             YOLO
                           </span>
                         )}
-                        <span className="text-[10px] text-gray-400 truncate max-w-56">
-                          {cameraSecondaryLabel(cam)}
+                        <span className="text-[10px] text-gray-400 truncate max-w-48">
+                          {cameraSecondaryLabel(cam) || "ตำแหน่งกล้องจราจร"}
                         </span>
                       </div>
                     </div>
