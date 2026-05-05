@@ -13,7 +13,33 @@ YOLO_STATUS: dict[str, object] = {
     "available": False,
     "reason": "not loaded yet",
     "model_path": "",
+    "device": "cpu",
+    "half": False,
 }
+
+
+def _detect_device() -> tuple[str, bool]:
+    """Pick the best available torch device for inference.
+
+    Returns ``(device, use_half)``. ``half`` (FP16) is only enabled on CUDA
+    where it is a near-free 2× speedup; on CPU/MPS it is left off because
+    the gain is small or negative.
+    """
+    try:
+        import torch  # type: ignore[import-not-found]
+    except Exception:
+        return "cpu", False
+    try:
+        if torch.cuda.is_available():
+            return "cuda", True
+    except Exception:
+        pass
+    try:
+        if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+            return "mps", False
+    except Exception:
+        pass
+    return "cpu", False
 
 # Vehicle classes in COCO dataset
 VEHICLE_CLASSES = {
@@ -34,6 +60,8 @@ class YOLODetector:
         self.model_path = model_path or Config.YOLO_MODEL_PATH
         self.confidence = confidence or Config.YOLO_CONFIDENCE
         self.model = None
+        self.device, self.use_half = _detect_device()
+        self.imgsz = int(getattr(Config, "YOLO_IMGSZ", int(os.getenv("YOLO_IMGSZ", 480))))
         self._load_model()
 
     def _load_model(self):
@@ -45,11 +73,29 @@ class YOLODetector:
                 try:
                     self.model = YOLO(source)
                     resolved_source = getattr(self.model, "ckpt_path", None) or source
-                    print(f"✓ YOLO model loaded: {resolved_source}")
+                    # Move to GPU and switch to FP16 when CUDA is available so
+                    # 55 cams × YOLO12n is feasible without saturating the CPU.
+                    try:
+                        self.model.to(self.device)
+                        if self.use_half:
+                            inner = getattr(self.model, "model", None)
+                            if inner is not None and hasattr(inner, "half"):
+                                inner.half()
+                    except Exception as exc:
+                        # Fallback gracefully if half/.to fails — better than
+                        # crashing the whole detector.
+                        print(f"  ⚠ YOLO device move failed ({self.device}, half={self.use_half}): {exc}")
+                        self.device, self.use_half = "cpu", False
+                    print(
+                        f"✓ YOLO model loaded: {resolved_source} "
+                        f"(device={self.device}, half={self.use_half}, imgsz={self.imgsz})"
+                    )
                     YOLO_STATUS.update({
                         "available": True,
                         "reason": "loaded",
                         "model_path": str(resolved_source),
+                        "device": self.device,
+                        "half": self.use_half,
                     })
                     return
                 except Exception as exc:
@@ -109,6 +155,9 @@ class YOLODetector:
         """
         if self.model is None:
             return []
+        # Dev/test: force blindness to verify optical-flow blindness fallback
+        if os.getenv("YOLO_FORCE_BLIND") == "1":
+            return []
 
         # Convert bytes to numpy if needed
         if isinstance(frame, bytes):
@@ -122,6 +171,9 @@ class YOLODetector:
             frame,
             conf=self.confidence,
             classes=VEHICLE_CLASS_IDS,
+            imgsz=self.imgsz,
+            half=self.use_half,
+            device=self.device,
             verbose=False,
         )
 

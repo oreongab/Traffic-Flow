@@ -386,6 +386,9 @@ def _background_thread_specs() -> list[tuple[str, Callable[[], object]]]:
     if Config.SYSTEM_MODE == "real" or Config.CAMERA_BACKEND == "rtsp":
         threads.extend([
             ("RTSP Ingest", _start_rtsp_ingest),
+            # Optical Flow must start BEFORE Tracker so the tracker has flow data
+            # available on its first tick. Tracker tolerates None gracefully if not yet ready.
+            ("Optical Flow", _start_optical_flow),
             ("Tracker", _start_tracker_service),
         ])
 
@@ -440,6 +443,19 @@ def _start_rtsp_ingest():
         print(f"  ⚠ RTSP ingest loop error: {e}")
 
 
+def _start_optical_flow():
+    """Start Sparse Lucas-Kanade optical flow worker in a background thread."""
+    if not Config.OPTICAL_FLOW_ENABLED:
+        print("  ✓ Optical flow disabled by config")
+        return
+    try:
+        from services.optical_flow import start_optical_flow_loop
+
+        start_optical_flow_loop()
+    except Exception as e:
+        print(f"  ⚠ Optical flow loop error: {e}")
+
+
 def _start_tracker_service():
     """Start real camera tracker/detection loop in a background thread."""
     try:
@@ -475,6 +491,7 @@ def _start_signal_apply_loop():
     from database.models import SignalTiming
     from services.signal_controller import (
         SimSignalController,
+        decide_ai_actions,
         get_signal_controller,
         get_signal_mode,
     )
@@ -483,9 +500,11 @@ def _start_signal_apply_loop():
     # overrides from a previous session don't override a fresh program.
     TTL_SECONDS = 600
     POLL_INTERVAL = 2.0
+    AI_DECISION_INTERVAL = 5.0  # seconds — recompute AI phase choice no faster than this
 
     applied_signature: dict[str, str] = {}  # junction_id -> hash of last applied payload
     manual_colors: dict[str, str] = {}  # junction_id -> color string to reassert
+    last_ai_tick: float = 0.0
     print("✓ Signal Apply loop started (2s cadence)")
 
     while True:
@@ -576,9 +595,23 @@ def _start_signal_apply_loop():
                     manual_colors.pop(jid, None)
                     applied_signature.pop(jid, None)
 
-            # If mode flipped to AI, let AI logic take over — clear overrides.
+            # If mode flipped to AI, let AI logic take over — clear overrides
+            # and pick the best phase per junction every AI_DECISION_INTERVAL.
             if mode == "ai":
                 manual_colors.clear()
+                if (now_ts - last_ai_tick) >= AI_DECISION_INTERVAL:
+                    last_ai_tick = now_ts
+                    try:
+                        actions, decisions = decide_ai_actions(_sim)
+                        if actions:
+                            controller.apply_ai_actions(actions)
+                            for d in decisions:
+                                print(
+                                    f"  🤖 AI junction {d['junction_id']} "
+                                    f"→ phase {d['phase']} (cars={d['cars']}, cameras={d['cameras']})"
+                                )
+                    except Exception as ai_exc:
+                        print(f"  ⚠ AI decision error: {type(ai_exc).__name__}: {ai_exc}")
 
         except Exception as e:
             print(f"  ⚠ Signal apply tick error: {type(e).__name__}: {e}")

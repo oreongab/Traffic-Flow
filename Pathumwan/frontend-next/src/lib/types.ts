@@ -36,6 +36,10 @@ export interface TrafficIndexData {
   timestamp: string;
   source?: string;
   freshness_seconds?: number;
+  // True when at least one road actually has live data; false means the
+  // backend has nothing to report yet (e.g. SUMO not running, no detections).
+  // Pages should render "ไม่มีข้อมูล" instead of `0` when this is false.
+  data_available?: boolean;
 }
 
 export interface TrafficIndexRoad {
@@ -82,6 +86,8 @@ export interface Camera {
   id: number;
   camera_id: string;
   name: string;
+  display_name?: string;
+  location_hint?: string;
   road: string;
   road_id?: string;
   lat: number;
@@ -220,6 +226,15 @@ export interface SimStatus {
   active: boolean;
 }
 
+export interface AIDecision {
+  junction_id: string;
+  phase: number;
+  score: number;
+  cars: number;
+  cameras: number;
+  timestamp: number;
+}
+
 export interface AIStatus {
   mode: "ai" | "manual";
   active: boolean;
@@ -228,6 +243,7 @@ export interface AIStatus {
   simulation_active?: boolean;
   step?: number;
   camera_count?: number;
+  last_decisions?: AIDecision[];
 }
 
 export interface SignalPhase {

@@ -12,7 +12,9 @@ import {
   setSignalPhase,
   getCameras,
 } from "@/lib/api";
+import type { SignalDirection } from "@/lib/api";
 import type { AIStatus, Junction, Camera } from "@/lib/types";
+import { cameraPrimaryLabel, cameraSecondaryLabel } from "@/lib/cameraLabels";
 
 const CctvFeed = dynamic(() => import("@/components/CctvFeed"), {
   ssr: false,
@@ -61,6 +63,9 @@ export default function ControlPage() {
   const [toggling, setToggling] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
+  // Direction selector for the manual override panel. Defaults to "all" so
+  // the existing "เปลี่ยนสีทุกแนว" workflow keeps working unchanged.
+  const [direction, setDirection] = useState<SignalDirection>("all");
 
   // Keep ref in sync so the stable fetchData can read latest selection
   useEffect(() => { selectedJunctionRef.current = selectedJunction; }, [selectedJunction]);
@@ -129,8 +134,24 @@ export default function ControlPage() {
   async function handleSignal(state: string) {
     if (!selectedJunction) return;
     try {
-      await setManualSignal(selectedJunction.id, state);
-      showToast(`เปลี่ยนไฟ ${selectedJunction.name} เป็น ${state}`);
+      const res = await setManualSignal(selectedJunction.id, state, direction);
+      const body = (res?.data ?? {}) as {
+        applied?: boolean;
+        reason?: string;
+        message?: string;
+      };
+      if (body.applied === false) {
+        // Backend now returns 200 with applied:false for recoverable states
+        // (e.g. sim_inactive). Surface the reason instead of a generic error.
+        if (body.reason === "sim_inactive") {
+          showToast("Simulation ยังไม่พร้อม — เริ่ม SUMO ก่อน");
+        } else {
+          showToast(body.message || "ยังเปลี่ยนสัญญาณไม่ได้");
+        }
+        return;
+      }
+      const dirLabel = direction === "all" ? "" : ` (ทิศ ${direction.toUpperCase()})`;
+      showToast(`เปลี่ยนไฟ ${selectedJunction.name}${dirLabel} เป็น ${state}`);
       fetchData();
     } catch {
       showToast("เกิดข้อผิดพลาด");
@@ -161,8 +182,9 @@ export default function ControlPage() {
   }
 
   function getJunctionLabel(junction: Junction, junctionCamera?: Camera | null) {
-    if (junctionCamera?.name && !looksLikeMachineName(junctionCamera.name)) {
-      return junctionCamera.name;
+    const cameraLabel = cameraPrimaryLabel(junctionCamera);
+    if (cameraLabel && !looksLikeMachineName(cameraLabel)) {
+      return cameraLabel;
     }
     const humanLabel = preferredHumanLabel(
       junctionCamera?.junction,
@@ -174,11 +196,20 @@ export default function ControlPage() {
     if (junctionCamera?.road) {
       return `แยก ${junctionCamera.road}`;
     }
+    // Final fallback — prefer the camera id (ASCII) over a Thai prefix glued to
+    // a machine id. Glyphs in some Thai prefixes were rendering as "?????" on
+    // the control page when paired with cluster ids.
+    const cameraId = junctionCamera?.camera_id || junction.camera_id;
+    if (cameraId) return String(cameraId);
     const cleanId = String(junction.id).replace(/^(joinedS_|TLS_|cluster_)/i, '');
-    return `ทางร่วมทางแยก ${cleanId}`;
+    return `Junction ${cleanId}`;
   }
 
   function getJunctionSubtitle(junction: Junction, junctionCamera?: Camera | null) {
+    const cameraSubtitle = cameraSecondaryLabel(junctionCamera);
+    if (cameraSubtitle && cameraSubtitle !== (junctionCamera?.camera_id || "")) {
+      return cameraSubtitle;
+    }
     if (junctionCamera?.road) {
       return `ถนน ${junctionCamera.road}`;
     }
@@ -193,7 +224,7 @@ export default function ControlPage() {
       return junction.camera_id;
     }
     const cleanId = String(junction.id).replace(/^(joinedS_|TLS_|cluster_)/i, '');
-    return `จุดตัดรหัส ${cleanId}`;
+    return `ID ${cleanId}`;
   }
 
   const filteredJunctions = junctions
@@ -253,9 +284,9 @@ export default function ControlPage() {
     <ProtectedRoute adminOnly>
       <div className="h-screen flex flex-col">
         <Navbar />
-        <div className="flex flex-1 pt-14 overflow-hidden bg-gray-50 justify-center gap-5 px-5 pb-5">
+        <div className="flex flex-1 pt-14 overflow-hidden bg-gray-50 gap-5 px-5 pb-5">
           {/* Left — Junction list + camera */}
-          <div className="my-5 flex w-[min(44vw,580px)] shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="my-5 flex min-w-0 basis-1/2 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             {/* Search */}
             <div className="px-4 py-3 border-b border-gray-200">
               <input
@@ -268,79 +299,87 @@ export default function ControlPage() {
             </div>
 
             {/* Junction list */}
-            <div className="min-h-[240px] max-h-[360px] overflow-y-auto overflow-x-hidden border-b border-gray-200">
-              {filteredJunctions.map((j) => {
-                const g = j.current_state.toLowerCase().split("").filter((c) => c === "g").length;
-                const total = Math.max(1, j.current_state.length);
-                const dom = g / total > 0.3 ? "green" : j.current_state.includes("y") ? "yellow" : "red";
-                const junctionCamera = cameras.find((camera) => cameraMatchesJunction(camera, j));
-                const junctionLabel = getJunctionLabel(j, junctionCamera);
-                const junctionSubtitle = getJunctionSubtitle(j, junctionCamera);
-                return (
-                  <button
-                    key={j.id}
-                    onClick={() => selectJunction(j)}
-                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-blue-50 ${
-                      selectedJunction?.id === j.id ? "bg-blue-50" : ""
-                    }`}
-                  >
-                    <span
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: phaseColor(dom) }}
-                    />
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      <div className="truncate text-sm font-medium leading-5 text-[#1e3a5f]">{junctionLabel}</div>
-                      <div className="mt-0.5 text-[10px] text-gray-400 truncate">
-                        {junctionSubtitle}
+            <div className="flex min-h-0 basis-[42%] flex-col border-b border-gray-200">
+              <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400">
+                รายชื่อแยกและกล้อง
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+                {filteredJunctions.map((j) => {
+                  const g = j.current_state.toLowerCase().split("").filter((c) => c === "g").length;
+                  const total = Math.max(1, j.current_state.length);
+                  const dom = g / total > 0.3 ? "green" : j.current_state.includes("y") ? "yellow" : "red";
+                  const junctionCamera = cameras.find((camera) => cameraMatchesJunction(camera, j));
+                  const junctionLabel = getJunctionLabel(j, junctionCamera);
+                  const junctionSubtitle = getJunctionSubtitle(j, junctionCamera);
+                  return (
+                    <button
+                      key={j.id}
+                      onClick={() => selectJunction(j)}
+                      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-blue-50 ${
+                        selectedJunction?.id === j.id ? "bg-blue-50" : ""
+                      }`}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: phaseColor(dom) }}
+                      />
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="truncate text-sm font-medium leading-5 text-[#1e3a5f]">{junctionLabel}</div>
+                        <div className="mt-0.5 text-[10px] text-gray-400 truncate">
+                          {junctionSubtitle}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-[10px] text-gray-500">เปลี่ยนใน</div>
-                      <div className="text-xs font-mono text-[#5ba8e0]">{Math.round(j.time_to_switch)}s</div>
-                    </div>
-                  </button>
-                );
-              })}
-              {filteredJunctions.length === 0 && (
-                <div className="py-8 text-center text-gray-400 text-sm">ไม่พบแยกจราจร</div>
-              )}
-            </div>
-
-            <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Camera feed</div>
-                  <div className="mt-1 truncate text-sm font-semibold leading-5 text-[#1e3a5f]">
-                    {feedCameraId ? feedCameraName : "เลือกแยกจราจรเพื่อดูกล้อง"}
-                  </div>
-                  {feedSubtitle && <div className="mt-1 text-[11px] text-gray-500">{feedSubtitle}</div>}
-                </div>
-                {feedCameraId && (
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                    {feedCameraId}
-                  </span>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-[10px] text-gray-500">เปลี่ยนใน</div>
+                        <div className="text-xs font-mono text-[#5ba8e0]">{Math.round(j.time_to_switch)}s</div>
+                      </div>
+                    </button>
+                  );
+                })}
+                {filteredJunctions.length === 0 && (
+                  <div className="py-8 text-center text-gray-400 text-sm">ไม่พบแยกจราจร</div>
                 )}
               </div>
             </div>
-            <div className="relative min-h-[360px] flex-1 bg-gray-900">
-              {feedCameraId ? (
-                <CctvFeed
-                  cameraId={feedCameraId}
-                  cameraName={feedCameraName}
-                  subtitle={feedSubtitle || undefined}
-                  cameraLat={selectedCam?.lat}
-                  cameraLng={selectedCam?.lng}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-                  {selectedJunction ? "ไม่มีกล้องสำหรับแยกนี้" : "เลือกแยกจราจร"}
+
+            <div className="flex min-h-0 basis-[58%] flex-col">
+              <div className="border-t border-gray-200 bg-gray-50 px-4 py-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Camera feed</div>
+                    <div className="mt-0.5 truncate text-sm font-semibold leading-5 text-[#1e3a5f]">
+                      {feedCameraId ? feedCameraName : "เลือกแยกจราจรเพื่อดูกล้อง"}
+                    </div>
+                    {feedSubtitle && <div className="mt-0.5 text-[11px] text-gray-500">{feedSubtitle}</div>}
+                  </div>
+                  {feedCameraId && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      {feedCameraId}
+                    </span>
+                  )}
                 </div>
-              )}
+              </div>
+              <div className="relative min-h-[340px] flex-1 bg-gray-900">
+                {feedCameraId ? (
+                  <CctvFeed
+                    cameraId={feedCameraId}
+                    cameraName={feedCameraName}
+                    subtitle={feedSubtitle || undefined}
+                    detectMode={false}
+                    cameraLat={selectedCam?.lat}
+                    cameraLng={selectedCam?.lng}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                    {selectedJunction ? "ไม่มีกล้องสำหรับแยกนี้" : "เลือกแยกจราจร"}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Right — Controls */}
-          <div className="flex-1 overflow-y-auto py-5">
+          <div className="min-w-0 basis-1/2 overflow-y-auto py-5">
             {loading ? (
               <div className="flex justify-center py-20">
                 <div className="animate-spin h-8 w-8 border-2 border-[#5ba8e0] border-t-transparent rounded-full" />
@@ -360,14 +399,32 @@ export default function ControlPage() {
                           ? "ระบบปรับเฟสไฟจราจรอัตโนมัติตามความหนาแน่นของรถ"
                           : "ผู้ดูแลสามารถตั้งค่าเฟสไฟจราจรได้เอง"}
                       </p>
+                      {aiStatus?.mode === "ai" && aiStatus.last_decisions && aiStatus.last_decisions.length > 0 && (
+                        <p className="text-[11px] text-emerald-600 mt-1.5">
+                          ตัดสินใจล่าสุด: {aiStatus.last_decisions.length} แยก —
+                          ขยายเขียวให้ทิศที่รถมากที่สุด ({Math.max(...aiStatus.last_decisions.map((d) => d.cars))} คัน/แยก)
+                        </p>
+                      )}
                     </div>
-                    <button onClick={toggleMode} disabled={toggling} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={aiStatus?.mode === "ai"}
+                      onClick={toggleMode}
+                      disabled={toggling}
+                      className="flex items-center gap-3 cursor-pointer disabled:opacity-50"
+                    >
                       <span className={`text-sm font-medium ${aiStatus?.mode === "ai" ? "text-green-600" : "text-gray-500"}`}>
                         {aiStatus?.mode === "ai" ? "AI" : "Manual"}
                       </span>
-                      <div className={`relative w-14 h-7 rounded-full transition-colors ${aiStatus?.mode === "ai" ? "bg-green-500" : "bg-gray-300"}`}>
-                        <span className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${aiStatus?.mode === "ai" ? "translate-x-7" : "translate-x-0.5"}`} />
-                      </div>
+                      <span
+                        aria-hidden
+                        className={`relative inline-flex h-8 w-16 shrink-0 rounded-full border border-transparent transition-colors ${aiStatus?.mode === "ai" ? "bg-green-500" : "bg-gray-300"}`}
+                      >
+                        <span
+                          className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-transform ${aiStatus?.mode === "ai" ? "translate-x-9" : "translate-x-1"}`}
+                        />
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -402,13 +459,46 @@ export default function ControlPage() {
                       <span className="text-xs text-gray-400 ml-2">เปลี่ยนใน {Math.round(selectedJunction.time_to_switch)}s</span>
                     </div>
 
+                    {/* Direction selector — picks which approach to flip.
+                        "ทุกแนว" matches the legacy whole-junction override. */}
+                    <div className="mb-3">
+                      <div className="text-[11px] font-medium text-gray-500 mb-1.5">เลือกทิศทาง</div>
+                      <div className="grid grid-cols-7 gap-1.5">
+                        {(
+                          [
+                            ["all", "ทุกแนว"],
+                            ["ns", "เหนือ-ใต้"],
+                            ["ew", "ออก-ตก"],
+                            ["n", "เหนือ"],
+                            ["e", "ตะวันออก"],
+                            ["s", "ใต้"],
+                            ["w", "ตะวันตก"],
+                          ] as const
+                        ).map(([key, label]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setDirection(key)}
+                            disabled={aiStatus?.mode === "ai"}
+                            className={`rounded-md py-1.5 text-[11px] font-medium transition-colors disabled:opacity-30 ${
+                              direction === key
+                                ? "bg-[#5ba8e0] text-white"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Quick override buttons */}
                     <div className="flex gap-3">
                       {(
                         [
-                          ["red", "#ef4444", "หยุดทั้งหมด"],
-                          ["yellow", "#eab308", "เหลืองทั้งหมด"],
-                          ["green", "#22c55e", "เขียวทั้งหมด"],
+                          ["red", "#ef4444", direction === "all" ? "หยุดทั้งหมด" : "ให้แดง"],
+                          ["yellow", "#eab308", direction === "all" ? "เหลืองทั้งหมด" : "ให้เหลือง"],
+                          ["green", "#22c55e", direction === "all" ? "เขียวทั้งหมด" : "ให้เขียว"],
                         ] as const
                       ).map(([state, color, label]) => (
                         <button

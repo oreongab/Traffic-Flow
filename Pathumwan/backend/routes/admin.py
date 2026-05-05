@@ -19,6 +19,7 @@ from services.camera_runtime import (
 )
 from services.mapping import get_camera_catalog, get_junction_display_name, looks_like_machine_id
 from services.signal_controller import (
+    get_ai_last_decisions,
     get_runtime_backends,
     get_signal_controller,
     get_signal_mode,
@@ -80,20 +81,41 @@ def api_signal_mode():
 @admin_bp.route("/signal/manual", methods=["POST"])
 @require_admin
 def api_signal_manual():
-    """Manually control a traffic light."""
+    """Manually control a traffic light.
+
+    Optional `direction` param ("all" | "ns" | "ew" | "n" | "e" | "s" | "w")
+    selects which approaches to flip. Defaults to "all" for backwards compat.
+
+    When the underlying simulation is not running we return 200 with
+    `applied: false, reason: "sim_inactive"` so the /control page can show a
+    toast instead of a generic error.
+    """
     if get_signal_mode() == "ai":
-        return jsonify({"success": False, "message": "กรุณาปิดโหมด AI ก่อนควบคุมเอง"}), 400
+        return jsonify({"success": False, "applied": False, "reason": "ai_mode", "message": "กรุณาปิดโหมด AI ก่อนควบคุมเอง"}), 400
 
     data = request.get_json(silent=True) or {}
     current_user = _request_user()
     junction_id = data.get("junction_id")
     color = data.get("state", data.get("color", "")).lower()
+    direction = (data.get("direction") or "all").lower().strip()
 
     if not junction_id or color not in ("red", "yellow", "green"):
-        return jsonify({"success": False, "message": "กรุณาระบุ junction_id และ color (red/yellow/green)"}), 400
+        return jsonify({
+            "success": False,
+            "applied": False,
+            "reason": "bad_request",
+            "message": "กรุณาระบุ junction_id และ color (red/yellow/green)",
+        }), 400
+    if direction not in ("all", "ns", "ew", "n", "e", "s", "w"):
+        return jsonify({
+            "success": False,
+            "applied": False,
+            "reason": "bad_direction",
+            "message": "direction ต้องเป็น all/ns/ew/n/e/s/w",
+        }), 400
 
     try:
-        new_state = _controller().set_manual_color(junction_id, color)
+        new_state = _controller().set_manual_color(junction_id, color, direction=direction)
 
         # Save to DB
         session = get_session()
@@ -101,7 +123,7 @@ def api_signal_manual():
             normalized_junction = ensure_junction(session, junction_id, junction_name=junction_id)
             timing = SignalTiming(
                 junction_id=str(normalized_junction or junction_id),
-                phase_durations=[{"phase": 0, "duration": 30, "state": new_state}],
+                phase_durations=[{"phase": 0, "duration": 30, "state": new_state, "direction": direction}],
                 mode="manual",
                 decided_by=current_user.get("username", "admin"),
             )
@@ -114,16 +136,20 @@ def api_signal_manual():
 
         return jsonify({
             "success": True,
-            "message": f"เปลี่ยนไฟ {junction_id} เป็น {color} สำเร็จ",
+            "applied": True,
+            "message": f"เปลี่ยนไฟ {junction_id} ทิศ {direction} เป็น {color} สำเร็จ",
             "junction_id": junction_id,
             "state": color,
+            "direction": direction,
         })
     except NotImplementedError as e:
-        return jsonify({"success": False, "message": str(e)}), 501
+        return jsonify({"success": False, "applied": False, "reason": "not_implemented", "message": str(e)})
     except RuntimeError as e:
-        return jsonify({"success": False, "message": str(e)}), 503
+        # Sim not active is an expected, recoverable state — 200 + reason so
+        # the UI shows a friendly toast instead of a generic 503 error.
+        return jsonify({"success": False, "applied": False, "reason": "sim_inactive", "message": str(e)})
     except Exception as e:
-        return jsonify({"success": False, "message": f"เกิดข้อผิดพลาด: {str(e)}"}), 500
+        return jsonify({"success": False, "applied": False, "reason": "internal_error", "message": f"เกิดข้อผิดพลาด: {str(e)}"}), 500
 
 
 @admin_bp.route("/ai-status")
@@ -140,6 +166,7 @@ def api_ai_status():
         "step": int(status.get("step", 0) or 0),
         "camera_count": int(status.get("camera_count", 0) or 0),
         "backends": get_runtime_backends(),
+        "last_decisions": get_ai_last_decisions(),
     })
 
 
@@ -287,13 +314,15 @@ def api_signal_set_phase():
             "message": f"ตั้งค่าเฟสไฟจราจร {junction_id} สำเร็จ",
         })
     except NotImplementedError as e:
-        return jsonify({"success": False, "message": str(e)}), 501
+        return jsonify({"success": False, "applied": False, "reason": "not_implemented", "message": str(e)})
     except RuntimeError as e:
-        return jsonify({"success": False, "message": str(e)}), 503
+        # Sim not active is an expected, recoverable state — surface as 200 + reason
+        # so the /control page can render a "ยังไม่พร้อม" toast instead of 503.
+        return jsonify({"success": False, "applied": False, "reason": "sim_inactive", "message": str(e)})
     except LookupError as e:
-        return jsonify({"success": False, "message": str(e)}), 404
+        return jsonify({"success": False, "applied": False, "reason": "not_found", "message": str(e)}), 404
     except Exception as e:
-        return jsonify({"success": False, "message": f"เกิดข้อผิดพลาด: {str(e)}"}), 500
+        return jsonify({"success": False, "applied": False, "reason": "internal_error", "message": f"เกิดข้อผิดพลาด: {str(e)}"}), 500
 
 
 @admin_bp.route("/users")

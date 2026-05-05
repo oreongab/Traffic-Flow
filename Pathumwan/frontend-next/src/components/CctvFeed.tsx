@@ -84,7 +84,7 @@ export default function CctvFeed({
         key={streamUrl}
         src={streamUrl}
         alt={cameraName}
-        className="h-full w-full object-cover"
+        className="h-full w-full object-contain"
         onError={() => setStreamError(true)}
         onLoad={() => setStreamError(false)}
       />
@@ -148,20 +148,18 @@ export default function CctvFeed({
         </div>
       )}
 
-      {/* Bottom overlay — vehicle detection counts */}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-4 pb-3 pt-10 text-white z-[2]">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <div className="text-[10px] text-white/70">
-              รถที่ตรวจจับได้ในมุมกล้อง
-            </div>
-            <div className="text-2xl font-bold leading-none">{counts.total}</div>
+      {/* Bottom overlay — single thin strip so the stream is never cropped */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-1.5 pt-2 text-white z-[2]">
+        <div className="flex items-center justify-between gap-3 text-[11px] text-white/90">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[10px] uppercase tracking-wide text-white/60">รถในมุมกล้อง</span>
+            <span className="text-base font-bold leading-none">{counts.total}</span>
           </div>
-          <div className="flex flex-wrap justify-end gap-3 text-[11px] text-white/85">
-            <span>รถยนต์ {counts.car}</span>
-            <span>มอเตอร์ไซค์ {counts.motorcycle}</span>
-            <span>บัส {counts.bus}</span>
-            <span>บรรทุก {counts.truck}</span>
+          <div className="flex flex-wrap justify-end gap-2 text-[11px] text-white/80">
+            <span>🚗 {counts.car}</span>
+            <span>🏍️ {counts.motorcycle}</span>
+            <span>🚌 {counts.bus}</span>
+            <span>🚛 {counts.truck}</span>
           </div>
         </div>
       </div>

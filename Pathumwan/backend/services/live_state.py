@@ -239,6 +239,15 @@ def get_latest_camera_state(max_age_seconds: float | None = None) -> list[dict[s
                 max(0.0, (_utcnow() - latest_timestamp).total_seconds()) if latest_timestamp else Config.STALE_THRESHOLD_SECONDS
             )
 
+            # Optical flow scene-level snapshot (None when worker not yet primed)
+            try:
+                from services.optical_flow import get_camera_scene_flow
+
+                scene_flow = get_camera_scene_flow(camera_id) or {}
+            except Exception:
+                scene_flow = {}
+            scene_magnitude = float(scene_flow.get("magnitude") or 0.0)
+
             result.append(
                 {
                     "camera_id": camera_id,
@@ -254,6 +263,9 @@ def get_latest_camera_state(max_age_seconds: float | None = None) -> list[dict[s
                     "timestamp": latest_timestamp,
                     "freshness_seconds": freshness_seconds,
                     "source": "detection-db",
+                    "scene_flow_magnitude": scene_magnitude,
+                    "flow_active": bool(scene_magnitude >= Config.OPTICAL_FLOW_SCENE_ACTIVE_THRESHOLD_PX),
+                    "flow_direction_deg": float(scene_flow.get("direction_deg") or 0.0),
                 }
             )
 

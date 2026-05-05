@@ -68,6 +68,10 @@ function indexColor(level: string) {
 function trafficSourceLabel(source?: string) {
   if (source === "live-state") return "Live state";
   if (source === "sumo-live") return "SUMO live";
+  if (source === "sumo-camera") return "SUMO camera";
+  if (source === "sumo-camera-fallback") return "SUMO camera fallback";
+  if (source === "camera-detection") return "YOLO detection";
+  if (source === "detection-fallback") return "YOLO fallback";
   if (source === "db-fallback") return "DB fallback";
   return source || "unknown";
 }
@@ -92,7 +96,7 @@ export default function DashboardPage() {
       }
     }
     fetchIndex();
-    const interval = setInterval(fetchIndex, 30000);
+    const interval = setInterval(fetchIndex, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -204,11 +208,28 @@ export default function DashboardPage() {
             </div>
           </form>
 
-          {/* Traffic index badge — top right overlay */}
-          {indexData && (
-            <div className="absolute top-[72px] right-4 z-[999]">
+          {/* Traffic index badge — top right overlay.
+              Shows "ไม่มีข้อมูล" when the backend has no live data yet
+              instead of a misleading 0.0, so admins can tell whether the
+              system is genuinely calm vs not yet reporting. */}
+          <div className="absolute top-[72px] right-4 z-[999]">
+            {!indexData ? (
+              <div className="min-w-[140px] rounded-xl bg-slate-700 px-5 py-3 text-center text-white shadow-lg">
+                <div className="text-base font-bold leading-tight">กำลังโหลด</div>
+                <div className="mt-1 text-[10px] opacity-90">ดัชนีรถติดแบบเรียลไทม์</div>
+              </div>
+            ) : indexData.data_available === false ? (
+              <div className="bg-amber-500 text-white rounded-xl px-5 py-3 shadow-lg text-center min-w-[140px]">
+                <div className="text-base font-bold leading-tight">
+                  ไม่มีข้อมูล
+                </div>
+                <div className="text-[10px] mt-1 opacity-90">
+                  รอระบบรายงานข้อมูลสด
+                </div>
+              </div>
+            ) : (
               <div
-                className={`${indexColor(indexData.level)} text-white rounded-xl px-5 py-3 shadow-lg text-center min-w-[120px]`}
+                className={`${indexColor(indexData.level)} text-white rounded-xl px-5 py-3 shadow-lg text-center min-w-[140px]`}
               >
                 <div className="text-3xl font-bold leading-none">
                   {indexData.index.toFixed(1)}
@@ -220,10 +241,9 @@ export default function DashboardPage() {
                 <div className="mt-1 text-[10px] opacity-80">
                   {trafficSourceLabel(indexData.source)}
                 </div>
-
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Bottom legend bar */}
         </main>

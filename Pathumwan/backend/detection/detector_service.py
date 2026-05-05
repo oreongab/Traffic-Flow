@@ -64,6 +64,17 @@ def start_detection_loop():
                             counts[vehicle_class] += 1
                         confidence_values.append(float(detection.get("confidence") or 0.0))
                     confidence_avg = sum(confidence_values) / len(confidence_values) if confidence_values else 0.0
+
+                    # In sim mode YOLO can momentarily miss crowded vehicles on the
+                    # rendered top-down view. Keep SUMO proximity counts as a floor
+                    # so downstream realtime/historical metrics are not poisoned by
+                    # zero-only detection snapshots.
+                    with simulation.sim_lock:
+                        sim_counts = count_vehicles_near_camera(
+                            simulation.get_traci(), cam, DEFAULT_RADIUS,
+                        )
+                    for key in ("car", "motorcycle", "bus", "truck", "total"):
+                        counts[key] = max(int(counts.get(key, 0) or 0), int(sim_counts.get(key, 0) or 0))
                 else:
                     # Use TraCI proximity counting (no YOLO needed)
                     with simulation.sim_lock:

@@ -65,6 +65,20 @@ function indexColor(val: number) {
   return "bg-red-100 text-red-700";
 }
 
+function toIsoDate(value?: string) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().slice(0, 10);
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+function liveTimeLabel(value?: string) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function StatisticsPage() {
   const [tab, setTab] = useState<Tab>("realtime");
   const [year, setYear] = useState(new Date().getFullYear());
@@ -79,6 +93,7 @@ export default function StatisticsPage() {
   const [liveIndex, setLiveIndex] = useState<TrafficIndexData | null>(null);
   const [liveRoads, setLiveRoads] = useState<RoadDensity[]>([]);
   const [loading, setLoading] = useState(true);
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     getAvailableYears()
@@ -91,28 +106,42 @@ export default function StatisticsPage() {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      getIndexToday().catch(() => []),
-      getIndexWeekly().catch(() => []),
-      getYearlyStats(year).catch(() => []),
-      getTopRoads(year).catch(() => []),
-      getDailyCount(year).catch(() => []),
-      getHourlyVehicleCounts().catch(() => []),
-    ]).then(([h, w, ys, t, d, hc]) => {
+    let active = true;
+
+    async function loadHistorical(initial: boolean) {
+      if (initial) setLoading(true);
+      const [h, w, ys, t, d, hc] = await Promise.all([
+        getIndexToday().catch(() => []),
+        getIndexWeekly().catch(() => []),
+        getYearlyStats(year).catch(() => []),
+        getTopRoads(year).catch(() => []),
+        getDailyCount(year).catch(() => []),
+        getHourlyVehicleCounts().catch(() => []),
+      ]);
+      if (!active) return;
       setHourly(h as HourlyIndex[]);
       setWeekly(w as WeeklyIndex[]);
       setYearly(ys as YearlyStat[]);
       setTopRoads(t as TopRoad[]);
       setDailyCount(d as DailyCount[]);
       setHourlyCounts(hc as HourlyVehicleCount[]);
-      setLoading(false);
-    });
+      if (initial) setLoading(false);
+    }
+
+    loadHistorical(true);
+    // Re-poll every 30s so non-realtime tabs (ดัชนี / ปี / รายวัน / TOP10) stay live
+    // without requiring a page refresh. Matches backend INDEX_INTERVAL.
+    const interval = setInterval(() => loadHistorical(false), 30000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [year]);
 
-  // Poll calculated realtime data every 30s
+  // Poll calculated realtime data every few seconds so all tabs for the
+  // current year can reflect the live stream, not just the realtime tab.
   useEffect(() => {
-    if (tab !== "realtime") return;
+    let active = true;
     const fetchRealtime = async () => {
       try {
         const [idx, density, hc] = await Promise.all([
@@ -120,6 +149,7 @@ export default function StatisticsPage() {
           getDensity().catch(() => []),
           getHourlyVehicleCounts().catch(() => []),
         ]);
+        if (!active) return;
         if (idx) setLiveIndex(idx);
         setLiveRoads(density as RoadDensity[]);
         setHourlyCounts(hc as HourlyVehicleCount[]);
@@ -127,16 +157,117 @@ export default function StatisticsPage() {
         // Fetch YOLO realtime counts via api helper
         const { default: api } = await import("@/lib/api");
         const res = await api.get("/stats/realtime-counts");
-        setRealtimeData((res.data.data || []) as Record<string, unknown>[]);
+        if (active) {
+          setRealtimeData((res.data.data || []) as Record<string, unknown>[]);
+        }
       } catch { /* offline */ }
     };
     fetchRealtime();
     const interval = setInterval(fetchRealtime, 5000);
-    return () => clearInterval(interval);
-  }, [tab]);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const liveTimestamp = liveIndex?.timestamp || new Date().toISOString();
+  const liveDate = toIsoDate(liveTimestamp);
+  const liveRealtimeTotal = realtimeData.reduce(
+    (sum, row) => sum + Number(row.total || 0),
+    0
+  );
+  const liveRoadTotal = liveRoads.reduce((sum, row) => sum + Number(row.vehicle_count || 0), 0);
+  const liveDailyTotal = Math.max(liveRealtimeTotal, liveRoadTotal);
+  const liveRoadRanks = liveRoads
+    .filter((road) => road.has_data !== false && (road.index > 0 || road.vehicle_count > 0 || road.speed > 0))
+    .sort((a, b) => b.index - a.index)
+    .slice(0, 10)
+    .map((road) => ({ road: road.road, avg_max_index: road.index }));
+  const hasLiveIndex = year === currentYear && !!liveIndex && liveIndex.data_available !== false;
+
+  const displayedHourly = [...hourly];
+  if (hasLiveIndex) {
+    const currentLabel = liveTimeLabel(liveTimestamp);
+    const existingIdx = displayedHourly.findIndex((row) => row.time === currentLabel);
+    const liveRow = {
+      hour: Number(new Date(liveTimestamp).getHours() || 0),
+      time: currentLabel,
+      index: liveIndex.index,
+    };
+    if (existingIdx >= 0) {
+      displayedHourly[existingIdx] = liveRow;
+    } else if (currentLabel) {
+      displayedHourly.push(liveRow);
+    }
+  }
+
+  const displayedWeekly = [...weekly];
+  if (hasLiveIndex) {
+    const existingIdx = displayedWeekly.findIndex((row) => row.date === liveDate);
+    const existing = existingIdx >= 0 ? displayedWeekly[existingIdx] : null;
+    const nextRow = {
+      date: liveDate,
+      max_index: Math.max(existing?.max_index || 0, liveIndex.index),
+      avg_index: existing ? Math.max(existing.avg_index, liveIndex.index) : liveIndex.index,
+    };
+    if (existingIdx >= 0) {
+      displayedWeekly[existingIdx] = nextRow;
+    } else {
+      displayedWeekly.unshift(nextRow);
+    }
+  }
+
+  const displayedYearly = [...yearly];
+  if (hasLiveIndex) {
+    const existingIdx = displayedYearly.findIndex((row) => row.date === liveDate);
+    const existing = existingIdx >= 0 ? displayedYearly[existingIdx] : null;
+    const nextRow = {
+      date: liveDate,
+      time: liveTimeLabel(liveTimestamp),
+      max_index: Math.max(existing?.max_index || 0, liveIndex.index),
+      peak_index: Math.max(existing?.peak_index || 0, liveIndex.index),
+      peak_time: liveTimeLabel(liveTimestamp),
+      avg_index: existing?.avg_index ?? liveIndex.index,
+    };
+    if (existingIdx >= 0) {
+      displayedYearly[existingIdx] = nextRow;
+    } else {
+      displayedYearly.unshift(nextRow);
+    }
+  }
+
+  const displayedDailyCount = [...dailyCount];
+  if (year === currentYear && liveDailyTotal > 0) {
+    const existingIdx = displayedDailyCount.findIndex((row) => row.date === liveDate);
+    const nextRow = {
+      date: liveDate,
+      total_vehicles: Math.max(displayedDailyCount[existingIdx]?.total_vehicles || 0, liveDailyTotal),
+    };
+    if (existingIdx >= 0) {
+      displayedDailyCount[existingIdx] = nextRow;
+    } else {
+      displayedDailyCount.unshift(nextRow);
+    }
+  }
+
+  const displayedTopRoads = [...topRoads];
+  if (year === currentYear && liveRoadRanks.length > 0) {
+    for (const liveRoad of liveRoadRanks) {
+      const existingIdx = displayedTopRoads.findIndex((row) => row.road === liveRoad.road);
+      if (existingIdx >= 0) {
+        displayedTopRoads[existingIdx] = {
+          ...displayedTopRoads[existingIdx],
+          avg_max_index: Math.max(displayedTopRoads[existingIdx].avg_max_index, liveRoad.avg_max_index),
+        };
+      } else {
+        displayedTopRoads.push(liveRoad);
+      }
+    }
+  }
+  displayedTopRoads.sort((a, b) => b.avg_max_index - a.avg_max_index);
 
   const chartData = {
-    labels: hourly.map((h) => {
+    labels: displayedHourly.map((h) => {
       const dt = new Date(h.time);
       return Number.isNaN(dt.getTime())
         ? `${String(h.hour).padStart(2, "0")}:00`
@@ -145,7 +276,7 @@ export default function StatisticsPage() {
     datasets: [
       {
         label: "ดัชนีจราจร",
-        data: hourly.map((h) => h.index),
+        data: displayedHourly.map((h) => h.index),
         borderColor: "#5ba8e0",
         backgroundColor: "rgba(91,168,224,0.1)",
         fill: true,
@@ -235,26 +366,40 @@ export default function StatisticsPage() {
                               สถานะจราจรแบบเรียลไทม์
                             </h2>
                             <p className="text-xs text-gray-500 mt-1">
-                              ใช้จำนวนรถจาก YOLO ต่อถนนเป็นหลัก แล้วคำนวณดัชนีร่วมกับความเร็วและสภาพถนนที่ระบบมีอยู่
+                              โหมดจริงใช้ YOLO และ live camera state เป็นหลัก ส่วนโหมดจำลองใช้ SUMO; ความเร็ว ความหนาแน่น และดัชนีเป็นค่าที่ระบบคำนวณจากข้อมูลสดของโหมดนั้น
                             </p>
                           </div>
-                          <span className="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                            LIVE
-                          </span>
+                          {liveIndex.data_available === false ? (
+                            <span className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
+                              <span className="w-2 h-2 rounded-full bg-amber-400" />
+                              ไม่มีข้อมูล
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+                              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                              LIVE
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div
-                            className="w-20 h-20 rounded-xl flex items-center justify-center text-white text-2xl font-bold"
-                            style={{ backgroundColor: liveIndex.color }}
-                          >
-                            {liveIndex.index.toFixed(1)}
+                        {liveIndex.data_available === false ? (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                            ยังไม่มีข้อมูลจราจร — ตรวจสอบว่า SUMO simulation ทำงานอยู่
+                            หรือกล้องส่งข้อมูลครบแล้วหรือยัง (ค่ายังไม่อัปเดต ไม่ใช่จราจรว่าง)
                           </div>
-                          <div>
-                            <div className="text-lg font-semibold text-[#1e3a5f]">{liveIndex.level}</div>
-                            <div className="text-xs text-gray-400">อัปเดตล่าสุด: {new Date(liveIndex.timestamp).toLocaleTimeString("th-TH")}</div>
+                        ) : (
+                          <div className="flex items-center gap-4">
+                            <div
+                              className="w-20 h-20 rounded-xl flex items-center justify-center text-white text-2xl font-bold"
+                              style={{ backgroundColor: liveIndex.color }}
+                            >
+                              {liveIndex.index.toFixed(1)}
+                            </div>
+                            <div>
+                              <div className="text-lg font-semibold text-[#1e3a5f]">{liveIndex.level}</div>
+                              <div className="text-xs text-gray-400">อัปเดตล่าสุด: {new Date(liveIndex.timestamp).toLocaleTimeString("th-TH")}</div>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     )}
 
@@ -490,7 +635,7 @@ export default function StatisticsPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {weekly.map((w, i) => (
+                          {displayedWeekly.map((w, i) => (
                             <tr
                               key={i}
                               className="border-t border-gray-100 hover:bg-gray-50"
@@ -514,7 +659,7 @@ export default function StatisticsPage() {
                               </td>
                             </tr>
                           ))}
-                          {weekly.length === 0 && (
+                          {displayedWeekly.length === 0 && (
                             <tr>
                               <td
                                 colSpan={3}
@@ -548,7 +693,7 @@ export default function StatisticsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {yearly.map((row, i) => (
+                        {displayedYearly.map((row, i) => (
                           <tr
                             key={i}
                             className="border-t border-gray-100 hover:bg-gray-50"
@@ -571,7 +716,7 @@ export default function StatisticsPage() {
                             </td>
                           </tr>
                         ))}
-                        {yearly.length === 0 && (
+                        {displayedYearly.length === 0 && (
                           <tr>
                             <td
                               colSpan={4}
@@ -603,7 +748,7 @@ export default function StatisticsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {dailyCount.map((d, i) => (
+                        {displayedDailyCount.map((d, i) => (
                           <tr
                             key={i}
                             className="border-t border-gray-100 hover:bg-gray-50"
@@ -619,7 +764,7 @@ export default function StatisticsPage() {
                             </td>
                           </tr>
                         ))}
-                        {dailyCount.length === 0 && (
+                        {displayedDailyCount.length === 0 && (
                           <tr>
                             <td
                               colSpan={3}
@@ -651,7 +796,7 @@ export default function StatisticsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {topRoads.map((r, i) => (
+                        {displayedTopRoads.slice(0, 10).map((r, i) => (
                           <tr
                             key={i}
                             className="border-t border-gray-100 hover:bg-gray-50"
@@ -671,7 +816,7 @@ export default function StatisticsPage() {
                             </td>
                           </tr>
                         ))}
-                        {topRoads.length === 0 && (
+                        {displayedTopRoads.length === 0 && (
                           <tr>
                             <td
                               colSpan={3}
