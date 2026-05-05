@@ -77,8 +77,13 @@ export default function ControlPage() {
       setCameras(cs as Camera[]);
       const current = selectedJunctionRef.current;
       if (!current && js.length > 0) {
-        setSelectedJunction(js[0]);
-        initEditDurations(js[0]);
+        const initialJunction =
+          js.find((j: Junction) => {
+            const matchedCamera = (cs as Camera[]).find((camera) => cameraMatchesJunction(camera, j));
+            return Boolean(matchedCamera?.camera_id || j.camera_id);
+          }) || js[0];
+        setSelectedJunction(initialJunction);
+        initEditDurations(initialJunction);
       } else if (current) {
         const updated = js.find((j: Junction) => j.id === current.id);
         if (updated) {
@@ -328,6 +333,7 @@ export default function ControlPage() {
                   cameraId={feedCameraId}
                   cameraName={feedCameraName}
                   subtitle={feedSubtitle || undefined}
+                  detectMode={false}
                   cameraLat={selectedCam?.lat}
                   cameraLng={selectedCam?.lng}
                 />

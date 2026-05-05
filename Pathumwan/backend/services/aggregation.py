@@ -6,10 +6,13 @@ Aggregates YOLO detection counts per road per hour and stores them for historica
 import time
 from datetime import datetime, timezone
 
+from config import Config
+
 
 def start_hourly_aggregation_loop():
-    """Background loop that aggregates detection data every 10 minutes."""
-    print("✓ Hourly vehicle count aggregation started")
+    """Background loop that aggregates detection data on Config.AGGREGATION_INTERVAL."""
+    interval = max(5, int(Config.AGGREGATION_INTERVAL))
+    print(f"✓ Hourly vehicle count aggregation started ({interval}s cadence)")
 
     while True:
         try:
@@ -17,7 +20,7 @@ def start_hourly_aggregation_loop():
         except Exception as e:
             print(f"  ⚠ Aggregation error: {e}")
 
-        time.sleep(600)  # Run every 10 minutes
+        time.sleep(interval)
 
 
 def aggregate_current_hour():
@@ -53,6 +56,11 @@ def aggregate_current_hour():
                 continue  # skip cameras with no road mapping (generic TFF-IDs)
 
             counts = det.vehicle_counts or {}
+            total = int(counts.get("total", 0) or 0)
+            if total <= 0:
+                # Zero-only detection snapshots are common when YOLO misses a frame.
+                # Ignore them so SUMO fallback can provide the live lower bound.
+                continue
             if road_id not in road_counts:
                 road_counts[road_id] = {
                     "car": 0, "motorcycle": 0, "bus": 0, "truck": 0,
@@ -63,7 +71,7 @@ def aggregate_current_hour():
             rc["motorcycle"] = max(rc["motorcycle"], counts.get("motorcycle", 0))
             rc["bus"] = max(rc["bus"], counts.get("bus", 0))
             rc["truck"] = max(rc["truck"], counts.get("truck", 0))
-            rc["total"] = max(rc["total"], counts.get("total", 0))
+            rc["total"] = max(rc["total"], total)
             rc["samples"] += 1
 
         # Also aggregate speed/index context from persisted road density data.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from threading import Lock
 from typing import Any
 
@@ -11,6 +12,27 @@ from services.live_state import get_latest_junction_state
 _mode_lock = Lock()
 _signal_mode = "manual"
 _active_ai_algorithm = "PPO"  # Default AI algorithm
+
+# Most recent AI decision per junction so /admin/ai-status can surface it.
+_ai_decision_lock = Lock()
+_ai_last_decisions: dict[str, dict[str, Any]] = {}
+
+
+def get_ai_last_decisions() -> list[dict[str, Any]]:
+    with _ai_decision_lock:
+        return list(_ai_last_decisions.values())
+
+
+def record_ai_decisions(decisions: list[dict[str, Any]]) -> None:
+    if not decisions:
+        return
+    now = time.time()
+    with _ai_decision_lock:
+        for d in decisions:
+            jid = str(d.get("junction_id") or "")
+            if not jid:
+                continue
+            _ai_last_decisions[jid] = {**d, "timestamp": now}
 
 def get_signal_mode() -> str:
     with _mode_lock:
@@ -81,16 +103,101 @@ class SimSignalController:
         target_phase = plan.get("target_phase")
         return bool(junction_id) and isinstance(target_phase, int)
 
-    def set_manual_color(self, junction_id: str, color: str) -> str:
+    def set_manual_color(self, junction_id: str, color: str, direction: str = "all") -> str:
+        """Override the TLS state for a junction.
+
+        direction:
+          - "all"  → every controlled lane gets ``color`` (legacy behaviour)
+          - "ns"/"ew" → only the lanes whose heading falls in the
+            corresponding axis are flipped; the remaining lanes keep their
+            current state. Useful for "เขียวเฉพาะแนวเหนือ-ใต้".
+          - "n"/"e"/"s"/"w" → only the lanes whose approach heading is in
+            that 90° quadrant are flipped. Pairs nicely with the
+            sequential-4 program (Issue 7) so each direction can be held
+            green independently of the others.
+
+        Falls back to "all" if direction filtering can't determine lane
+        headings (e.g. sumolib unavailable) so the legacy contract is
+        preserved.
+        """
         if not self.is_available():
             raise RuntimeError("Simulation ยังไม่พร้อม")
         traci = self.simulation.get_traci()
+        state_map = {"red": "r", "yellow": "y", "green": "G"}
+        char = state_map[color]
         with self.simulation.sim_lock:
             current = traci.trafficlight.getRedYellowGreenState(junction_id)
-            state_map = {"red": "r", "yellow": "y", "green": "G"}
-            new_state = state_map[color] * len(current)
+            if direction == "all":
+                new_state = char * len(current)
+            else:
+                mask = self._direction_mask(traci, junction_id, direction, len(current))
+                if mask is None:
+                    new_state = char * len(current)
+                else:
+                    new_state = "".join(
+                        char if mask[i] else current[i] for i in range(len(current))
+                    )
             traci.trafficlight.setRedYellowGreenState(junction_id, new_state)
         return new_state
+
+    @staticmethod
+    def _direction_mask(traci: Any, junction_id: str, direction: str, length: int) -> list[bool] | None:
+        """Return a boolean mask (len == TLS state length) selecting lanes
+        whose heading matches ``direction``. Returns None when we can't infer.
+        """
+        try:
+            from sumolib.net import readNet  # type: ignore[import-not-found]
+        except Exception:
+            return None
+        try:
+            from config import Config as _Cfg
+            net = readNet(_Cfg.SUMO_NET_FILE)
+        except Exception:
+            return None
+
+        try:
+            controlled = traci.trafficlight.getControlledLanes(junction_id)
+        except Exception:
+            return None
+        if len(controlled) != length:
+            # SUMO sometimes pads state with extra signal indices; bail safely.
+            return None
+
+        def _heading_deg(lane_id: str) -> float | None:
+            try:
+                lane = net.getLane(lane_id)
+                edge = lane.getEdge()
+                from_node = edge.getFromNode()
+                to_node = edge.getToNode()
+                fx, fy = from_node.getCoord()
+                tx, ty = to_node.getCoord()
+                import math as _math
+                return (_math.degrees(_math.atan2(ty - fy, tx - fx)) + 360.0) % 360.0
+            except Exception:
+                return None
+
+        def _matches(heading: float) -> bool:
+            if direction == "n":
+                return 45.0 <= heading < 135.0
+            if direction == "e":
+                return heading < 45.0 or heading >= 315.0
+            if direction == "s":
+                return 225.0 <= heading < 315.0
+            if direction == "w":
+                return 135.0 <= heading < 225.0
+            if direction == "ns":
+                return (45.0 <= heading < 135.0) or (225.0 <= heading < 315.0)
+            if direction == "ew":
+                return (heading < 45.0 or heading >= 315.0) or (135.0 <= heading < 225.0)
+            return False
+
+        mask: list[bool] = []
+        for lane_id in controlled:
+            h = _heading_deg(lane_id)
+            mask.append(False if h is None else _matches(h))
+        if not any(mask):
+            return None
+        return mask
 
     def set_phase_plan(self, junction_id: str, phase_durations: list[dict[str, Any]]) -> None:
         if not self.is_available():
@@ -183,7 +290,7 @@ class RealSignalController:
         target_phase = plan.get("target_phase")
         return bool(junction_id) and isinstance(target_phase, int)
 
-    def set_manual_color(self, junction_id: str, color: str) -> str:
+    def set_manual_color(self, junction_id: str, color: str, direction: str = "all") -> str:
         raise NotImplementedError("Real signal controller is not implemented yet")
 
     def set_phase_plan(self, junction_id: str, phase_durations: list[dict[str, Any]]) -> None:

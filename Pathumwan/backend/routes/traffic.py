@@ -123,8 +123,54 @@ def _build_detection_road_data() -> list[dict[str, object]]:
     return detected_roads
 
 
+def _estimate_detection_metrics(road_id: str, vehicle_count: int) -> tuple[float, float]:
+    """Infer speed/occupancy when live state only has counts from YOLO."""
+    free_flow_speed = float(_ffs_map.get(road_id, 50) or 50)
+    camera_fov_km = 0.028
+    capacity_per_km = 120.0
+    density_per_km = float(max(vehicle_count, 0)) / camera_fov_km if camera_fov_km > 0 else 0.0
+    vc_ratio = density_per_km / capacity_per_km if capacity_per_km > 0 else 0.0
+    speed_factor = max(0.05, 1.0 - (vc_ratio / 1.5))
+    return round(free_flow_speed * speed_factor, 1), min(vc_ratio, 2.0)
+
+
+def _normalize_live_road_state_rows(raw_rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Patch partial runtime rows with detection-derived metrics.
+
+    Real-mode tracker fallback can produce road rows that only contain
+    ``vehicle_count`` while speed/occupancy remain zero. Treat those as partial
+    observations and infer the missing metrics from the latest YOLO counts so
+    realtime pages don't render misleading all-zero traffic conditions.
+    """
+    detection_counts = get_detection_counts_by_road()
+    normalized: list[dict[str, object]] = []
+
+    for original in raw_rows:
+        row = dict(original)
+        road_id = str(row.get("road_id") or "")
+        if not road_id:
+            continue
+
+        detected_total = _as_int((detection_counts.get(road_id) or {}).get("total"), 0)
+        vehicle_count = max(_as_int(row.get("vehicle_count"), 0), detected_total)
+        speed = _as_float(row.get("avg_speed_kmh"), 0)
+        occupancy_ratio = _as_float(row.get("occupancy_ratio"), 0)
+
+        row["vehicle_count"] = vehicle_count
+        if vehicle_count > 0 and speed <= 0 and occupancy_ratio <= 0:
+            estimated_speed, estimated_ratio = _estimate_detection_metrics(road_id, vehicle_count)
+            row["avg_speed_kmh"] = estimated_speed
+            row["occupancy_ratio"] = estimated_ratio
+            row["source"] = str(row.get("source") or "live-state")
+            row["metric_source"] = "detection-estimate"
+
+        normalized.append(row)
+
+    return normalized
+
+
 def _build_live_index_response():
-    road_data = get_latest_road_state()
+    road_data = _normalize_live_road_state_rows(get_latest_road_state())
     if not road_data:
         detected = _build_detection_road_data()
         if not detected:
@@ -198,7 +244,7 @@ def _build_live_index_response():
 
 
 def _build_live_density_response():
-    raw = get_latest_road_state()
+    raw = _normalize_live_road_state_rows(get_latest_road_state())
     if not raw:
         detected = _build_detection_road_data()
         if not detected:
@@ -372,6 +418,10 @@ def api_traffic_index():
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "source": "sumo-live",
                 "freshness_seconds": 0.0,
+                # True when at least one road actually has live data; lets the
+                # frontend distinguish "0 รถ" (genuinely empty) from
+                # "ไม่มีข้อมูล" (sim not yet producing numbers).
+                "data_available": any(bool(r.get("has_data")) for r in mapped_roads),
             })
         except Exception:
             pass
@@ -425,6 +475,7 @@ def api_traffic_index():
         "timestamp": db_timestamp,
         "source": "db-cache",
         "freshness_seconds": round(_freshness_seconds(db_timestamp), 1),
+        "data_available": any(bool(r.get("has_data")) for r in mapped_roads),
     })
 
 
@@ -484,7 +535,11 @@ def api_road_density():
                     "freshness_seconds": 0.0,
                     "has_data": idx is not None,
                 })
-            return jsonify({"status": "ok", "roads": roads})
+            return jsonify({
+                "status": "ok",
+                "roads": roads,
+                "data_available": any(bool(r.get("has_data")) for r in roads),
+            })
         except Exception:
             pass
 
@@ -492,26 +547,28 @@ def api_road_density():
     detected = _build_detection_road_data()
     if detected:
         area_idx, road_results = calculate_area_index(detected)
+        roads_payload = [
+            {
+                "road": rr["road_name"],
+                "road_id": rr["road_id"],
+                "density": rr["vehicle_count"],
+                "vehicle_count": rr["vehicle_count"],
+                "speed": rr["avg_speed"],
+                "free_flow_speed": rr["free_flow_speed"],
+                "index": rr["index"],
+                "level": rr["level"],
+                "has_data": rr.get("has_data", False),
+                "travel_time": "-",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "source": "detection-fallback",
+            }
+            for rr in road_results
+        ]
         return jsonify({
             "status": "ok",
-            "roads": [
-                {
-                    "road": rr["road_name"],
-                    "road_id": rr["road_id"],
-                    "density": rr["vehicle_count"],
-                    "vehicle_count": rr["vehicle_count"],
-                    "speed": rr["avg_speed"],
-                    "free_flow_speed": rr["free_flow_speed"],
-                    "index": rr["index"],
-                    "level": rr["level"],
-                    "has_data": rr.get("has_data", False),
-                    "travel_time": "-",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "source": "detection-fallback",
-                }
-                for rr in road_results
-            ],
+            "roads": roads_payload,
             "area_index": area_idx,
+            "data_available": any(bool(r.get("has_data")) for r in roads_payload),
         })
 
     raw = get_road_density_list()
@@ -541,7 +598,11 @@ def api_road_density():
             "freshness_seconds": round(_freshness_seconds(ts), 1),
             "has_data": idx is not None,
         })
-    return jsonify({"status": "ok", "roads": roads})
+    return jsonify({
+        "status": "ok",
+        "roads": roads,
+        "data_available": any(bool(r.get("has_data")) for r in roads),
+    })
 
 
 @traffic_bp.route("/traffic-lights")
@@ -659,6 +720,12 @@ def _compute_road_geometry():
     except Exception:
         net = None
 
+    # Long roads (พระราม 4, เพชรบุรี …) extend outside Pathumwan in the OSM
+    # extract. Clipping each segment to the district bbox keeps the density
+    # page's "click-to-zoom" focused on the monitored portion of the road
+    # instead of flying the map outside the area.
+    from cctv import is_in_pathumwan
+
     out = []
     for code in road_codes:
         edge_ids = mapping.get(code, []) if mapping else []
@@ -674,16 +741,24 @@ def _compute_road_geometry():
                     continue
                 if len(shape) < 2:
                     continue
-                seg = []
+                # Walk the shape, splitting into separate sub-segments wherever
+                # the polyline leaves the Pathumwan bbox so a single edge that
+                # crosses the boundary contributes only its in-district parts.
+                current: list[list[float]] = []
                 for x, y in shape:
                     lat, lng = sumo_xy_to_latlng(x, y)
-                    seg.append([lat, lng])
-                    min_lat = lat if min_lat is None else min(min_lat, lat)
-                    max_lat = lat if max_lat is None else max(max_lat, lat)
-                    min_lng = lng if min_lng is None else min(min_lng, lng)
-                    max_lng = lng if max_lng is None else max(max_lng, lng)
-                if len(seg) >= 2:
-                    segments.append(seg)
+                    if is_in_pathumwan(lat, lng):
+                        current.append([lat, lng])
+                        min_lat = lat if min_lat is None else min(min_lat, lat)
+                        max_lat = lat if max_lat is None else max(max_lat, lat)
+                        min_lng = lng if min_lng is None else min(min_lng, lng)
+                        max_lng = lng if max_lng is None else max(max_lng, lng)
+                    else:
+                        if len(current) >= 2:
+                            segments.append(current)
+                        current = []
+                if len(current) >= 2:
+                    segments.append(current)
 
         bbox = None
         if min_lat is not None:

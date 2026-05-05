@@ -37,12 +37,15 @@ def _load_defined_roads() -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
             continue
         by_id[road_id] = raw
 
-        for alias in {
+        aliases = set(raw.get("aliases", []) or [])
+        aliases.update({
             road_id,
             road_id.upper(),
             _clean_text(raw.get("name_th")) or "",
             _clean_text(raw.get("name_en")) or "",
-        }:
+        })
+
+        for alias in aliases:
             alias = _clean_text(alias)
             if alias:
                 by_name[alias.casefold()] = road_id

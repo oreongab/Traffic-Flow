@@ -1,0 +1,280 @@
+{
+  "dataset": "c:\\Users\\Pattama\\OneDrive\\Documents\\GitHub\\Traffic-Flow\\dataset_packs\\02_data_700veh\\Pathumwan\\data\\Dataset.csv",
+  "net": "c:\\Users\\Pattama\\OneDrive\\Documents\\GitHub\\Traffic-Flow\\Pathumwan\\osm.net.xml",
+  "seed": 42,
+  "aliases": {
+    "edge_phayathai_in": {
+      "label": "แยกปทุมวัน ขาเข้า ถ.พญาไท",
+      "junction_id": "pathumwan",
+      "road_code": "PHAYATHAI",
+      "lat": 13.7466,
+      "lng": 100.5291,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "380617698#1",
+        "motorcycle": "1396731680#1",
+        "passenger": "1396731680#1",
+        "taxi": "1396731680#1",
+        "bus": "380617698#1",
+        "truck": "1396731680#1"
+      }
+    },
+    "edge_rama1_in": {
+      "label": "แยกปทุมวัน ขาเข้า ถ.พระราม1",
+      "junction_id": "pathumwan",
+      "road_code": "RAMA1",
+      "lat": 13.7466,
+      "lng": 100.5291,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "-932351677",
+        "motorcycle": "-932351677",
+        "passenger": "-932351677",
+        "taxi": "-932351677",
+        "bus": "-932351677",
+        "truck": "-932351677"
+      }
+    },
+    "edge_ratchadamri_in": {
+      "label": "แยกราชประสงค์ ขาเข้า ถ.ราชดำริ",
+      "junction_id": "ratchaprasong",
+      "road_code": "RATCHADAMRI",
+      "lat": 13.7461,
+      "lng": 100.5399,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "659312600#10",
+        "motorcycle": "659312600#10",
+        "passenger": "659312600#10",
+        "taxi": "659312600#10",
+        "bus": "659312600#10",
+        "truck": "659312600#10"
+      }
+    },
+    "edge_chalermphao_in": {
+      "label": "แยกเฉลิมเผ่า ขาเข้า ถ.พระราม1",
+      "junction_id": "chalermphao",
+      "road_code": "RAMA1",
+      "lat": 13.7446968,
+      "lng": 100.5355829,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "-464065117#8",
+        "motorcycle": "156976852",
+        "passenger": "156976852",
+        "taxi": "156976852",
+        "bus": "-464065117#8",
+        "truck": "156976852"
+      }
+    },
+    "edge_rama1_pongphraram_in": {
+      "label": "แยกพงษ์พระราม ขาเข้า ถ.พระราม1",
+      "junction_id": "siam",
+      "road_code": "RAMA1",
+      "lat": 13.7454,
+      "lng": 100.5344,
+      "approximate": true,
+      "source_edges": {
+        "bicycle": "-464065117#10",
+        "motorcycle": "464065117#3",
+        "passenger": "464065117#3",
+        "taxi": "464065117#3",
+        "bus": "-464065117#10",
+        "truck": "464065117#3"
+      }
+    },
+    "edge_banthatthong_in": {
+      "label": "แยกเจริญผล ขาเข้า ถ.บรรทัดทอง",
+      "junction_id": "charoenphon",
+      "road_code": "BANTHATTHONG",
+      "lat": 13.7462592,
+      "lng": 100.5235185,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "-1107150412#7",
+        "motorcycle": "-1107150412#7",
+        "passenger": "-1107150412#7",
+        "taxi": "-1107150412#7",
+        "bus": "-1107150412#7",
+        "truck": "-1107150412#7"
+      }
+    },
+    "edge_samyan_phayathai_in": {
+      "label": "แยกสามย่าน ขาเข้า ถ.พญาไท",
+      "junction_id": "samyan",
+      "road_code": "PHAYATHAI",
+      "lat": 13.7332,
+      "lng": 100.5291,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "157800039#0",
+        "motorcycle": "157800039#0",
+        "passenger": "157800039#0",
+        "taxi": "157800039#0",
+        "bus": "157800039#0",
+        "truck": "157800039#0"
+      }
+    },
+    "edge_ram4_saladaeng_in": {
+      "label": "แยกศาลาแดง ขาเข้า ถ.พระราม4",
+      "junction_id": "saladaeng",
+      "road_code": "RAMA4",
+      "lat": 13.7285677,
+      "lng": 100.5343416,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "824816478#3",
+        "motorcycle": "824816478#3",
+        "passenger": "824816478#3",
+        "taxi": "824816478#3",
+        "bus": "824816478#3",
+        "truck": "824816478#3"
+      }
+    },
+    "edge_ram4_witthayu_in": {
+      "label": "แยกวิทยุ ขาเข้า ถ.พระราม4",
+      "junction_id": "rama4_witthayu",
+      "road_code": "RAMA4",
+      "lat": 13.7280872,
+      "lng": 100.5447008,
+      "approximate": true,
+      "source_edges": {
+        "bicycle": "675969812#0",
+        "motorcycle": "675969812#0",
+        "passenger": "675969812#0",
+        "taxi": "675969812#0",
+        "bus": "675969812#0",
+        "truck": "675969812#0"
+      }
+    },
+    "edge_phloenchit_in": {
+      "label": "แยกเพลินจิต ขาเข้า ถ.เพลินจิต",
+      "junction_id": "ploenchit_witthayu",
+      "road_code": "PLOENCHIT",
+      "lat": 13.7439,
+      "lng": 100.547,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "659313262#6",
+        "motorcycle": "659313262#6",
+        "passenger": "659313262#6",
+        "taxi": "659313262#6",
+        "bus": "659313262#6",
+        "truck": "659313262#6"
+      }
+    },
+    "edge_chitlom_in": {
+      "label": "แยกชิดลม ขาเข้า ถ.เพลินจิต",
+      "junction_id": "chidlom",
+      "road_code": "PLOENCHIT",
+      "lat": 13.7445,
+      "lng": 100.543,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "659313262#6",
+        "motorcycle": "659313262#6",
+        "passenger": "659313262#6",
+        "taxi": "659313262#6",
+        "bus": "659313262#6",
+        "truck": "659313262#6"
+      }
+    },
+    "edge_sarasin_ratchadamri_in": {
+      "label": "แยกสารสิน ขาเข้า ถ.ราชดำริ",
+      "junction_id": "sarasin",
+      "road_code": "RATCHADAMRI",
+      "lat": 13.7411,
+      "lng": 100.5395,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "659312600#4",
+        "motorcycle": "659312600#4",
+        "passenger": "659312600#4",
+        "taxi": "659312600#4",
+        "bus": "659312600#4",
+        "truck": "659312600#4"
+      }
+    },
+    "edge_ram4_henri_in": {
+      "label": "แยกอังรีดูนังต์ ขาเข้า ถ.พระราม4",
+      "junction_id": "henri_rama4",
+      "road_code": "RAMA4",
+      "lat": 13.7342472,
+      "lng": 100.5339512,
+      "approximate": true,
+      "source_edges": {
+        "bicycle": "824816479#0",
+        "motorcycle": "824816479#0",
+        "passenger": "824816479#0",
+        "taxi": "824816479#0",
+        "bus": "824816479#0",
+        "truck": "824816479#0"
+      }
+    },
+    "edge_ram4_saphanluang_in": {
+      "label": "แยกสะพานเหลือง ขาเข้า ถ.พระราม4",
+      "junction_id": "saphanluang",
+      "road_code": "RAMA4",
+      "lat": 13.7344851,
+      "lng": 100.5237133,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "824816484#2",
+        "motorcycle": "824816484#2",
+        "passenger": "824816484#2",
+        "taxi": "824816484#2",
+        "bus": "824816484#2",
+        "truck": "824816484#2"
+      }
+    },
+    "edge_phetchaburi_uruphong_in": {
+      "label": "แยกอุรุพงษ์ ขาเข้า ถ.เพชรบุรี",
+      "junction_id": "uruphong",
+      "road_code": "PHETCHABURI",
+      "lat": 13.7473025,
+      "lng": 100.5208542,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "159378391#9",
+        "motorcycle": "159378391#9",
+        "passenger": "159378391#9",
+        "taxi": "159378391#9",
+        "bus": "159378391#9",
+        "truck": "159378391#9"
+      }
+    },
+    "edge_ratchadamri_pratunam_in": {
+      "label": "แยกประตูน้ำ ขาเข้า ถ.ราชดำริ",
+      "junction_id": "pratunam",
+      "road_code": "RATCHADAMRI",
+      "lat": 13.7493577,
+      "lng": 100.5414931,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "1419917392",
+        "motorcycle": "1419917392",
+        "passenger": "1419917392",
+        "taxi": "1419917392",
+        "bus": "1419917392",
+        "truck": "1419917392"
+      }
+    },
+    "edge_banthatthong_charat_in": {
+      "label": "แยกจรัสเมือง ขาเข้า ถ.บรรทัดทอง",
+      "junction_id": "charatmuang",
+      "road_code": "BANTHATTHONG",
+      "lat": 13.7423138,
+      "lng": 100.5228087,
+      "approximate": false,
+      "source_edges": {
+        "bicycle": "-1118227918#8",
+        "motorcycle": "-1118227918#8",
+        "passenger": "-1118227918#8",
+        "taxi": "-1118227918#8",
+        "bus": "-1118227918#8",
+        "truck": "-1118227918#8"
+      }
+    }
+  },
+  "generated_flows": 612
+}

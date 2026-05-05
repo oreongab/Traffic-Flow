@@ -9,6 +9,7 @@ from flask import Blueprint, Response, jsonify, request
 from config import Config
 from services.live_state import get_latest_camera_state, get_latest_camera_vehicle_tracks
 from services.camera_sync import get_offline_camera_inventory, repair_camera_inventory_if_needed
+from services.mapping import get_junction_display_name, looks_like_machine_id
 from services.rtsp_ingest import get_latest_frame, get_stream_status
 from cctv import is_in_pathumwan
 
@@ -76,6 +77,45 @@ def _camera_identity(camera: dict[str, object] | None) -> str:
     )
 
 
+def _clean_text(value) -> str:
+    return str(value or "").strip()
+
+
+def _format_road_label(value: str) -> str:
+    label = _clean_text(value)
+    if not label:
+        return ""
+    return label if label.startswith("ถนน") else f"ถนน{label}"
+
+
+def _build_camera_labels(camera_id: str, base_name: str, road_name: str, junction_name: str) -> tuple[str, str]:
+    name = _clean_text(base_name)
+    road = _clean_text(road_name)
+    junction = _clean_text(junction_name)
+    road_label = _format_road_label(road)
+
+    if name and not looks_like_machine_id(name) and name not in {road, junction}:
+        display_name = name
+    elif junction and road:
+        display_name = f"{junction} • {road}"
+    else:
+        display_name = junction or road or name or camera_id
+
+    detail_parts: list[str] = []
+    if junction and junction not in display_name:
+        detail_parts.append(junction)
+    if road_label and road not in display_name and road_label not in display_name:
+        detail_parts.append(road_label)
+    detail_parts.append(f"ID {camera_id}")
+
+    deduped: list[str] = []
+    for part in detail_parts:
+        if part and part not in deduped:
+            deduped.append(part)
+
+    return display_name, " • ".join(deduped)
+
+
 @cameras_bp.route("/")
 def api_cameras():
     """Return CCTV cameras.
@@ -134,9 +174,14 @@ def api_cameras():
                 sim_by_identity[identity] = c
 
     # Decide which camera IDs to expose.
-    # Keep DB-backed metadata, but do not let a stale DB hide live TLS cameras.
-    if db_cameras_by_identity or sim_by_identity or offline_by_identity:
-        allowed_ids = set(db_cameras_by_identity.keys()) | set(sim_by_identity.keys()) | set(offline_by_identity.keys())
+    # In sim mode, the live SUMO inventory is the canonical set so every page
+    # sees the same cameras/count as the running network. Do not union with
+    # stale DB/offline rows because that reintroduces ghost cameras that the
+    # dashboard/control pages cannot actually stream.
+    if sim_by_identity:
+        allowed_ids = set(sim_by_identity.keys())
+    elif db_cameras_by_identity or offline_by_identity:
+        allowed_ids = set(db_cameras_by_identity.keys()) | set(offline_by_identity.keys())
     else:
         allowed_ids = set(_DEFINED_IDS)
 
@@ -151,8 +196,9 @@ def api_cameras():
         sim_row = sim_by_identity.get(identity)
         offline_row = offline_by_identity.get(identity)
         camera_id = str(
-            (db_row or {}).get("camera_id")
-            or (sim_row or {}).get("camera_id")
+            (sim_row or {}).get("camera_id")
+            or (offline_row or {}).get("camera_id")
+            or (db_row or {}).get("camera_id")
             or (offline_row or {}).get("camera_id")
             or identity
         )
@@ -193,6 +239,33 @@ def api_cameras():
         elif def_row and def_row.get("road"):
             road_code = def_row.get("road")
         road_name = _ROAD_NAME_MAP.get(road_code, road_code)
+        raw_junction = (
+            (db_row or {}).get("junction")
+            or (sim_row or {}).get("junction")
+            or (offline_row or {}).get("junction")
+            or def_row.get("junction")
+            or ""
+        )
+        junction_name = get_junction_display_name(
+            (db_row or {}).get("junction_id")
+            or (sim_row or {}).get("sumo_tls_id")
+            or (offline_row or {}).get("sumo_tls_id")
+            or raw_junction,
+            raw_junction,
+        ) or _clean_text(raw_junction)
+        base_name = (
+            (db_row or {}).get("name")
+            or (sim_row or {}).get("name")
+            or (offline_row or {}).get("name")
+            or def_row.get("name")
+            or camera_id
+        )
+        display_name, location_hint = _build_camera_labels(
+            camera_id,
+            str(base_name),
+            str(road_name),
+            str(junction_name),
+        )
 
         db_pk = None
         if db_row and db_row.get("id") is not None:
@@ -205,19 +278,21 @@ def api_cameras():
             # Use a simple sequential id for frontend list keys; camera_id is the canonical identifier.
             "id": db_pk if db_pk is not None else (idx + 1),
             "camera_id": camera_id,
-            "name": (db_row or {}).get("name") or (sim_row or {}).get("name") or (offline_row or {}).get("name") or def_row.get("name") or camera_id,
+            "name": str(base_name),
+            "display_name": display_name,
+            "location_hint": location_hint,
             "road": road_name,
             "road_id": road_code,
             "lat": lat,
             "lng": lng,
-            "junction": (db_row or {}).get("junction") or (sim_row or {}).get("junction") or (offline_row or {}).get("junction") or def_row.get("junction") or "",
+            "junction": junction_name,
             "junction_id": (db_row or {}).get("junction_id") or (offline_row or {}).get("sumo_tls_id") or "",
             "sumo_tls_id": (db_row or {}).get("sumo_tls_id") or (sim_row or {}).get("sumo_tls_id") or (offline_row or {}).get("sumo_tls_id") or "",
             "stream_status": str(live_camera_state.get(camera_id, {}).get("stream_status", "online" if sim_row else "offline")),
             "freshness_seconds": _as_float(live_camera_state.get(camera_id, {}).get("freshness_seconds", 0.0 if sim_row else Config.STALE_THRESHOLD_SECONDS)),
         })
 
-    cam_list.sort(key=lambda camera: str(camera.get("name", "")))
+    cam_list.sort(key=lambda camera: str(camera.get("display_name") or camera.get("name") or ""))
     return jsonify({
         "status": "ok",
         "cameras": cam_list,
@@ -228,14 +303,19 @@ def api_cameras():
 
 @cameras_bp.route("/<camera_id>/frame")
 def api_camera_frame(camera_id):
-    """Get a single CCTV frame (JPEG image) rendered from SUMO data."""
+    """Get a single CCTV frame (JPEG image) rendered from SUMO data.
+
+    Always returns a JPEG (200) — falls back to a labelled placeholder when the
+    camera is offline / sim not ready / not yet calibrated, so the frontend
+    `<img>` never triggers `onError` for a rostered camera.
+    """
     if _live_mode_enabled():
         detect = request.args.get("detect", "false").lower() == "true"
         frame_bytes = get_latest_frame(str(camera_id), detect=detect)
         return Response(frame_bytes or _placeholder_frame("Camera offline"), mimetype="image/jpeg")
 
     if _sim is None:
-        return Response(b"", mimetype="image/jpeg", status=503)
+        return Response(_placeholder_frame("รอ Simulation เริ่มต้น"), mimetype="image/jpeg")
 
     sim = _sim
 
@@ -248,12 +328,19 @@ def api_camera_frame(camera_id):
             return Response(frame_bytes, mimetype="image/jpeg")
 
     frame_bytes = sim.capture_cctv_frame(camera_id, zoom_level=zoom_level, show_detection=detect)
+    if not frame_bytes:
+        frame_bytes = _placeholder_frame(f"กล้อง {camera_id} ยังไม่พร้อมใช้งาน")
     return Response(frame_bytes, mimetype="image/jpeg")
 
 
 @cameras_bp.route("/<camera_id>/stream")
 def api_camera_stream(camera_id):
-    """MJPEG stream for continuous CCTV viewing (rendered from SUMO data)."""
+    """MJPEG stream for continuous CCTV viewing.
+
+    Always emits valid JPEG frames — when the underlying source is unavailable
+    (sim down, frame render failed, etc.) we yield a labelled placeholder so the
+    `<img>` MJPEG client never errors out for a rostered camera.
+    """
     if _live_mode_enabled():
         def generate_live():
             while True:
@@ -272,7 +359,23 @@ def api_camera_stream(camera_id):
         return Response(generate_live(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
     if _sim is None:
-        return Response("Simulation not running", status=503)
+        # Stream a placeholder loop instead of returning 503 — keeps the UI
+        # showing a friendly "waiting" message instead of an `<img>` error.
+        def generate_waiting():
+            placeholder = _placeholder_frame("รอ Simulation เริ่มต้น")
+            while True:
+                try:
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + placeholder + b"\r\n"
+                    )
+                except GeneratorExit:
+                    return
+                except Exception:
+                    break
+                time.sleep(1.0)
+
+        return Response(generate_waiting(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
     sim = _sim
     zoom_level = request.args.get("zoom", "near")
@@ -285,16 +388,17 @@ def api_camera_stream(camera_id):
                 frame = sim.get_cached_frame(camera_id)
                 if not frame:
                     frame = sim.capture_cctv_frame(camera_id, zoom_level=zoom_level)
-                if frame:
-                    # Hash by id() of the bytes object — capture loop replaces the
-                    # object when a new frame is ready, so we only send fresh bytes.
-                    fid = id(frame)
-                    if fid != last_frame_id:
-                        last_frame_id = fid
-                        yield (
-                            b"--frame\r\n"
-                            b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
-                        )
+                if not frame:
+                    frame = _placeholder_frame(f"กล้อง {camera_id} ยังไม่พร้อมใช้งาน")
+                # Hash by id() of the bytes object — capture loop replaces the
+                # object when a new frame is ready, so we only send fresh bytes.
+                fid = id(frame)
+                if fid != last_frame_id:
+                    last_frame_id = fid
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+                    )
             except GeneratorExit:
                 return
             except Exception:
@@ -331,7 +435,21 @@ def api_camera_detect_stream(camera_id):
         return Response(generate_live_detect(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
     if _sim is None:
-        return Response("Simulation not running", status=503)
+        def generate_waiting_detect():
+            placeholder = _placeholder_frame("รอ Simulation เริ่มต้น")
+            while True:
+                try:
+                    yield (
+                        b"--frame\r\n"
+                        b"Content-Type: image/jpeg\r\n\r\n" + placeholder + b"\r\n"
+                    )
+                except GeneratorExit:
+                    return
+                except Exception:
+                    break
+                time.sleep(1.0)
+
+        return Response(generate_waiting_detect(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
     sim = _sim
     zoom_level = request.args.get("zoom", "near")
@@ -342,11 +460,12 @@ def api_camera_detect_stream(camera_id):
                 frame = sim.capture_cctv_frame(
                     camera_id, zoom_level=zoom_level, show_detection=True,
                 )
-                if frame:
-                    yield (
-                        b"--frame\r\n"
-                        b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
-                    )
+                if not frame:
+                    frame = _placeholder_frame(f"กล้อง {camera_id} ยังไม่พร้อมใช้งาน")
+                yield (
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+                )
             except GeneratorExit:
                 return
             except Exception:
@@ -437,11 +556,11 @@ def api_camera_detect(camera_id):
         return Response(frame_bytes or _placeholder_frame("Detection unavailable"), mimetype="image/jpeg")
 
     if _sim is None:
-        return Response(b"", mimetype="image/jpeg", status=503)
+        return Response(_placeholder_frame("รอ Simulation เริ่มต้น"), mimetype="image/jpeg")
 
     frame_bytes = _sim.capture_cctv_frame(camera_id, show_detection=True)
     if not frame_bytes:
-        return Response(b"", mimetype="image/jpeg", status=404)
+        frame_bytes = _placeholder_frame(f"กล้อง {camera_id} ยังไม่พร้อมใช้งาน")
     return Response(frame_bytes, mimetype="image/jpeg")
 
 

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/test_optical_flow.py -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest \"Pathumwan/backend/tests/test_optical_flow.py\" -v)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(.venv/Scripts/python.exe -m py_compile Pathumwan/backend/detection/tracker_service.py Pathumwan/backend/services/live_state.py Pathumwan/backend/app.py)",
+      "Bash(.venv/Scripts/python.exe -m py_compile Pathumwan/backend/services/optical_flow.py Pathumwan/backend/detection/tracker_service.py Pathumwan/backend/detection/yolo_detector.py Pathumwan/backend/services/live_state.py Pathumwan/backend/config.py Pathumwan/backend/app.py Pathumwan/backend/tests/test_optical_flow.py)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Pattama\\\\OneDrive\\\\Documents\\\\GitHub\\\\Traffic-Flow\\\\Pathumwan\" -Recurse -File)",
+      "Bash(Select-Object FullName)",
+      "Bash(Get-Content routes/traffic.py -TotalCount 50)",
+      "Bash(python -c \"import ast; [ast.parse\\(open\\(f, encoding='utf-8'\\).read\\(\\)\\) for f in ['config.py', 'simulation.py', 'routes/admin.py', 'routes/cameras.py', 'routes/traffic.py', 'detection/yolo_detector.py', 'services/signal_controller.py', 'services/optical_flow.py']]; print\\('SYNTAX OK'\\)\")",
+      "Bash(npx --offline tsc --noEmit -p .)",
+      "Bash(node node_modules/typescript/bin/tsc --noEmit -p .)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Pattama\\\\OneDrive\\\\Documents\\\\GitHub\\\\Traffic-Flow\\\\Pathumwan\\\\backend\" -Recurse -Name)",
+      "Bash(dir /s /B \"c:\\\\Users\\\\Pattama\\\\OneDrive\\\\Documents\\\\GitHub\\\\Traffic-Flow\")",
+      "PowerShell(head -50)"
+    ]
+  }
+}

@@ -4,6 +4,25 @@
 > ภายในเล่มนี้จะอธิบายทุกอย่างที่คุณต้องรู้ก่อนแก้โค้ด ตั้งแต่ตัวโปรเจคทำอะไร ใช้เทคโนโลยีอะไร
 > ไฟล์แต่ละไฟล์ทำหน้าที่อะไร มี API ตัวไหน หน้าเว็บใช้ API ไหน และจะต่อส่วน AI เข้ากับระบบยังไง
 
+## 0. Behavior changes — 2026-05-04
+
+- **Statistics page (`/statistics`)** — tab `ดัชนีรถติด`, `สถิติประจำปี`, `จำนวนรถในแต่ละวัน`,
+  `TOP 10` ตอนนี้ poll API ทุก 30 วินาที (เดิมโหลดครั้งเดียวตอนเปลี่ยน year). Tab `ข้อมูลเรียลไทม์`
+  ยังคง 5 วินาทีเหมือนเดิม.
+- **Aggregation interval** — `services/aggregation.py` รันทุก `Config.AGGREGATION_INTERVAL`
+  วินาที (default 30, ปรับผ่าน env `AGGREGATION_INTERVAL`). เดิมเป็น 600s ตายตัว.
+- **AI mode = active heuristic** — `_start_signal_apply_loop` ในโหมด AI เรียก
+  `decide_ai_actions(sim)` ทุก 5 วินาที → เลือก phase ตามจำนวนรถ YOLO ต่อทิศ →
+  `controller.apply_ai_actions(...)` (เดิม `mode == "ai"` เป็น no-op).
+- **Density geometry clipping** — `_compute_road_geometry()` ตัด vertex ที่อยู่นอก Pathumwan
+  bbox ออกก่อนคำนวณ bbox/segment, กดถนนใน `/density` ไม่ลากไปนอกเขตอีก.
+- **CCTV uniform icon** — `MapView.cameraIcon()` ไม่ผูกสีกรอบกับ traffic-light state แล้ว.
+- **CCTV stream** — `<img>` ใช้ `object-contain` + overlay เป็นแถบเตี้ย ไม่บังภาพ.
+- **Control page** — camera feed สูง 520px, AI toggle redesigned (`role="switch"`, w-16 h-8),
+  fallback junction label เลี่ยง Thai prefix (กัน glyph ?????) → ใช้ camera_id โดยตรง.
+- **Control page indicator** — แสดง "ตัดสินใจล่าสุด: N แยก ..." เมื่ออยู่ใน AI mode
+  (data จาก `/admin/ai-status.last_decisions`).
+
 ---
 
 ## 1. สรุปโปรเจค (What & Why)
@@ -33,7 +52,7 @@
 | เทคโนโลยี | ตัวเลือกเดิมที่พิจารณา | ที่เลือกเพราะ |
 |---|---|---|
 | **SUMO (Simulation of Urban Mobility)** | AIMSUN, VISSIM, CARLA | Open-source, import OSM ได้ตรงเขต, มี TraCI API ให้ Python พูดคุยแบบ real-time, support `traci.trafficlight.setPhase()` (คำสั่งพื้นฐานของ RL agent) |
-| **YOLOv8n (Ultralytics)** | YOLOv5, Faster R-CNN | 8n เบา FPS สูงพอสำหรับ 55 กล้อง × ทุก 5s, pretrained COCO มี vehicle classes (2 car, 3 motorcycle, 5 bus, 7 truck) ครบ, API สวยและสลับ backbone ได้ง่าย |
+| **YOLO12n (Ultralytics)** | YOLO11, Faster R-CNN | 12n ยังเบาพอสำหรับ 55 กล้อง × ทุก 5s, pretrained COCO มี vehicle classes (2 car, 3 motorcycle, 5 bus, 7 truck) ครบ, API สวยและสลับ backbone ได้ง่าย |
 | **Flask 3** | FastAPI, Django | Lightweight, ไม่ติด framework convention, รองรับ MJPEG streaming + JSON + background threads ในตัวเดียวได้สบาย |
 | **Next.js 16 App Router + React 19** | Vite SPA, plain React | Hot-reload ดี, file-based routing ช่วย prototype หน้าเว็บหลาย ๆ หน้าเร็ว, รองรับ dynamic import (สำหรับ Leaflet ที่ต้อง window) |
 | **Neon PostgreSQL (+SQLite fallback)** | MySQL, MongoDB | Postgres native JSON columns สำหรับ `vehicle_counts`, `zones`, `phase_durations`, รองรับ concurrent writes จาก 6 background threads, Neon มี free tier พร้อม auto-scaling |
@@ -225,6 +244,100 @@ Retention policy รันจาก `services/daily_stats.py::purge_old_raw_data
 
 ---
 
+## 5.5 🌊 Optical Flow Augmentation Layer (Real-Mode)
+
+### 5.5.1 ทำไมต้องเพิ่ม Optical Flow
+
+YOLOv12 + centroid tracker เดิม (`backend/detection/tracker_service.py`) มี 4 จุดอ่อนสำคัญ
+ที่ optical flow แก้ได้:
+
+| จุดอ่อนของระบบเดิม | ผลกระทบ | optical flow แก้ยังไง |
+|---|---|---|
+| YOLO blindness ใน scene หนาแน่น | `vehicle_count = 0` ตอนรถติด | flow magnitude > threshold ⇒ inject `flow_active=True` |
+| Speed = (Δcenter / 5s) noisy | ค่ากระโดด ±20 km/h ใน free-flow | LK ที่ 0.5s gap → blend `0.7 * lk + 0.3 * centroid` |
+| Tracker re-ID มอเตอร์ไซค์ | ID เปลี่ยนทุก 5s | ทำนาย bbox จาก flow vector ก่อน match |
+| Stop detection หยาบ | จัด queue ผิด | flow mag < 1.5 px ⇒ stopped (independent ของ speed) |
+
+### 5.5.2 Algorithm: Sparse Lucas-Kanade
+
+**ทำไม sparse ไม่ใช่ dense Farneback**: dense flow ทุก pixel ใน 55 cams × 2 fps จะกิน CPU
+~80% ของหลาย cores. Sparse LK แค่ 200 corners/cam → ~20% ของ 1 core เพียงพอ
+
+**Pipeline ภายใน** (`backend/services/optical_flow.py::_process_camera_tick`):
+
+1. `cv2.imdecode(jpeg_bytes, cv2.IMREAD_COLOR)` — frame จาก rtsp_ingest cache
+2. `cv2.resize` → 320 × scaled_height
+3. `cv2.cvtColor` → grayscale
+4. **First frame** หรือ feature_age >= 5s: `cv2.goodFeaturesToTrack(gray, maxCorners=200,
+   qualityLevel=0.01, minDistance=7, blockSize=7)` — Shi-Tomasi corner detection
+5. **Else**: `cv2.calcOpticalFlowPyrLK(prev_gray, gray, prev_pts, None,
+   winSize=(15,15), maxLevel=2, criteria=(EPS|COUNT, 10, 0.03))`
+6. Forward-backward check: รัน LK กลับด้าน เปรียบเทียบ → drop จุดที่ `|reverse - prev| > 1.0`
+   (ลด outlier จาก occlusion/illumination change)
+7. Compute scene metrics: mean magnitude, atan2(mean dx, mean dy) → direction_deg,
+   `active_ratio = sum(|v| > 0.5) / total`
+8. Per-zone metrics: ใช้ `cv2.pointPolygonTest` ตรวจ point ใน polygon ของแต่ละ zone
+
+### 5.5.3 Public API ที่ tracker เรียกใช้
+
+จาก `backend/services/optical_flow.py`:
+
+| Function | คืนค่า | ใช้ที่ไหน |
+|---|---|---|
+| `get_camera_scene_flow(camera_id)` | `{magnitude, direction_deg, active_ratio, ts}` | Goal 1 (blindness) ใน `_build_live_metrics` |
+| `get_bbox_flow(camera_id, bbox)` | `{vx_px, vy_px, magnitude_px, n_points, dt_s}` | Goal 2,4 (speed/queue) ใน `_prepare_tracks` + `_build_live_metrics` |
+| `get_zone_flow(camera_id, zone_id)` | `{magnitude, n_points}` | future use (per-approach flow) |
+| `get_predicted_center(cam_id, prev_center, dt_s)` | `(x,y) \| None` | Goal 3 (assoc) ใน `_match_track` |
+
+### 5.5.4 Threading & Concurrency
+
+- Worker thread spawn ใน `backend/app.py::_background_thread_specs` ระหว่าง `RTSP Ingest` และ
+  `Tracker` (lifecycle: ingest → flow → tracker)
+- `cv2.calcOpticalFlowPyrLK` ปล่อย GIL ใน C++ → parallel จริงกับ YOLO (`detection/yolo_detector.py`)
+- ใช้ `_FLOW_LOCK = threading.Lock()` ป้องกัน race condition เวลา tracker อ่าน state พร้อม worker เขียน
+- ไม่ใช้ thread pool — single worker พอ; pool จะแย่ง CPU กับ YOLO
+
+### 5.5.5 ไม่กระทบส่วนอื่น
+
+- **rtsp_ingest** ไม่ต้องแก้ — optical flow เป็น read-only consumer ของ `_frame_cache`
+- **DB schema** ไม่ต้องแก้ — state in-memory ใน `_FLOW_STATE` (~4 MB)
+- **frontend MJPEG** ไม่กระทบ — ไม่แก้ stream pipeline เลย
+- **dataset packs / SUMO** ไม่กระทบ — optical flow ทำงานบน RTSP frame เท่านั้น
+  (`use_pack.bat <name>` ยัง swap dataset ได้ปกติ)
+
+### 5.5.6 Config Knobs (`backend/config.py`)
+
+| Env Var | Default | ผล |
+|---|---|---|
+| `OPTICAL_FLOW_ENABLED` | `1` | master toggle — `0` = ปิดทั้งระบบ regression-free |
+| `OPTICAL_FLOW_FPS_TARGET` | `2.0` | ลดเหลือ 1.0 ถ้า CPU ตึง |
+| `OPTICAL_FLOW_DOWNSAMPLE_WIDTH` | `320` | ใหญ่ = แม่น แต่ช้า |
+| `OPTICAL_FLOW_MAX_FEATURES` | `200` | จำนวน Shi-Tomasi corner ต่อ camera |
+| `OPTICAL_FLOW_FEATURE_REFRESH_INTERVAL_SECONDS` | `5.0` | re-detect features ทุก N วิ |
+| `OPTICAL_FLOW_QUEUE_MAGNITUDE_THRESHOLD_PX` | `1.5` | < threshold ⇒ stopped (Goal 4) |
+| `OPTICAL_FLOW_SCENE_ACTIVE_THRESHOLD_PX` | `1.0` | scene > threshold ⇒ flow active (Goal 1) |
+| `OPTICAL_FLOW_NOISE_FLOOR_PX` | `0.5` | floor สำหรับ active_ratio |
+| `OPTICAL_FLOW_BLINDNESS_FALLBACK_ENABLED` | `1` | ปิดเฉพาะ Goal 1 ได้ |
+| `OPTICAL_FLOW_CAMERA_ALLOWLIST` | `""` | comma-separated; empty = all cameras |
+| `YOLO_FORCE_BLIND` | `""` | dev only — `1` ทำให้ YOLO คืน [] (test blindness fallback) |
+
+### 5.5.7 Verification Workflow
+
+1. **Unit test** `backend/tests/test_optical_flow.py` (6 cases): synthetic checkerboard
+   2 frames เลื่อน 10px → assert `vx_px ≈ 10, vy_px ≈ 0, n_points > 10`
+   ```powershell
+   cd Pathumwan/backend
+   python -m pytest tests/test_optical_flow.py -v
+   ```
+2. **Smoke test**: `GET /api/cameras` → field `scene_flow_magnitude > 0` ขณะมีรถ
+3. **Speed comparison**: ดู `lk_speed_kmh` vs `speed_kmh` ใน track snapshot ผ่าน
+   `/api/vehicles` — LK variance ต่ำกว่า centroid บน free-flow camera
+4. **Blindness fallback**: ตั้ง `YOLO_FORCE_BLIND=1` ใน .env หรือ docker compose env →
+   verify `extra_metadata.flow_active = True` ใน metrics
+5. **Resource**: `docker stats traffixflow_backend` → CPU < 50% ของ 2-core limit, RAM < 1 GB
+
+---
+
 ## 6. API Endpoints (ทั้งหมด)
 
 ### Auth — `/api/auth/*`
@@ -316,7 +429,7 @@ Retention policy รันจาก `services/daily_stats.py::purge_old_raw_data
 
 | เป้าหมาย | ไฟล์ | สิ่งที่ต้องทำ |
 |---|---|---|
-| เปลี่ยน YOLO weight / backbone | `backend/detection/yolo_detector.py` | แก้ `_load_model()`; ใช้ `Config.YOLO_MODEL_PATH` (default `yolov8n.pt`) |
+| เปลี่ยน YOLO weight / backbone | `backend/detection/yolo_detector.py` | แก้ `_load_model()`; ใช้ `Config.YOLO_MODEL_PATH` (default `yolo12n.pt`) |
 | เพิ่มคลาส (เช่น tuk-tuk, van) | `backend/detection/yolo_detector.py` | แก้ `_CLASS_MAP` + add key ใน `counts` schema ของ `traffic_detections.vehicle_counts` |
 | ใช้ ONNX / TensorRT | `backend/detection/yolo_detector.py` | แทนที่ `ultralytics.YOLO` ด้วย `onnxruntime` / `tensorrt` — ต้องคง `detect(frame_bytes) -> list[dict]` interface เดิม |
 | เพิ่ม tracking (ByteTrack/DeepSORT) | `backend/detection/tracker_service.py` (โครงมีอยู่) | implement `start_tracker_service_loop()` + เขียนไปยัง `traffic_detections` (เพิ่ม track_id) — อาจต้องเพิ่ม column ใน model ด้วย |
@@ -356,7 +469,10 @@ Retention policy รันจาก `services/daily_stats.py::purge_old_raw_data
 - ถ้า `mode=manual` + payload เป็น `[{state: "red"}]` → reassert `setRedYellowGreenState` ทุก tick
   (ไม่เช่นนั้น SUMO program ปกติจะเขียนทับภายใน 1 step)
 - ถ้า `mode=manual` + payload เป็น `[{index:0, duration:30}, ...]` → apply 1 ครั้ง (TraCI program logic persistent)
-- ถ้า `mode=ai` → ให้ `apply_ai_actions` จัดการ (loop นี้ไม่แตะ)
+- ถ้า `mode=ai` → loop เรียก `decide_ai_actions(simulation)` ทุก 5 วินาที, จับคู่ camera→lane ผ่าน
+  `road_mapping` + `get_camera_road_map`, ให้คะแนน phase แต่ละเฟสจาก vehicle count บนกล้องที่ลานนั้นเป็น G,
+  เลือก phase คะแนนสูงสุดแล้วเรียก `controller.apply_ai_actions(actions)`. การตัดสินใจล่าสุดเก็บไว้ใน
+  `signal_controller._ai_last_decisions` และโผล่ที่ `/api/admin/ai-status` (`last_decisions[]`).
 
 ### 8.5 คำถามที่คนทำ AI ถามบ่อย
 
@@ -449,9 +565,10 @@ GET http://localhost:5000/api/health
 | `CAMERA_BACKEND` | `sumo` | `sumo` / `rtsp` |
 | `SIGNAL_BACKEND` | `sim` | `sim` = TraCI / `controller` = external |
 | `AI_BACKEND` | `mock` | `mock` / `torch` / `onnx` |
-| `YOLO_MODEL_PATH` | `yolov8n.pt` | path ไปยัง weight |
+| `YOLO_MODEL_PATH` | `yolo12n.pt` | path ไปยัง weight |
 | `DETECTION_INTERVAL` | `5` | วินาที — YOLO run ต่อรอบ |
 | `INDEX_INTERVAL` | `30` | วินาที — density + index calc |
+| `AGGREGATION_INTERVAL` | `30` | วินาที — hourly vehicle count aggregation (ก่อนหน้านี้ 600s) |
 | `STALE_THRESHOLD_SECONDS` | `30` | ถือว่ากล้อง offline เมื่อ freshness เกินค่านี้ |
 | `FLASK_HOST` / `FLASK_PORT` | `0.0.0.0` / `5000` | |
 | `SECRET_KEY` | (required) | JWT signing |
@@ -590,10 +707,14 @@ GET http://localhost:5000/api/health
 
 **ถ้าสลับเป็น AI mode:**
 - Frontend เรียก `POST /api/admin/signal/mode {mode: "ai"}`
-- Signal apply loop จะไม่ reassert manual override ต่อ → SUMO กลับไปเดิน program ปกติ
-  (ยังไม่มี AI agent จริง — `backend/ai/*` เป็นโครงเปล่า)
+- Signal apply loop หยุด reassert manual override + เริ่มเรียก `decide_ai_actions(sim)` ทุก 5 วินาที
+- AI heuristic (rule-based, no model needed) หา phase ที่ให้ green กับลานที่ YOLO นับรถได้สูงสุด:
+  จับคู่ camera→edge→controlled lane index ผ่าน `road_mapping` + `get_camera_road_map`,
+  ให้คะแนนแต่ละ phase = sum ของ vehicle_count บนกล้องที่ลาน G ใน phase นั้น, เลือก phase คะแนนสูงสุด
+- การตัดสินใจล่าสุดถูกบันทึกใน `signal_controller._ai_last_decisions` และโผล่ที่
+  `/api/admin/ai-status` (`last_decisions[]`) เพื่อให้หน้า control แสดง "ตัดสินใจล่าสุด: N แยก"
 - **ใช่, SUMO follow traffic rules อยู่แล้วตาม TLS program** (all-red clearance, yellow transition)
-  — AI agent ตอนนี้ถ้ามีจริงจะเพียงเลือก phase index/duration ให้, ไม่ได้ควบคุม traffic rules ระดับแยก
+  — AI heuristic เลือก phase index ที่อยู่ใน `programLogic.phases[]` เท่านั้น ไม่ skip yellow
 
 ### 13.8 ถ้า AI ของเราทำงาน มันจะปฏิบัติตามกฎจราจรใน SUMO ไหม?
 
@@ -751,6 +872,111 @@ curl http://localhost:5000/api/health | jq .yolo
 3. ถ้าหลังจาก 1–2 ยังไม่พอ → เพิ่ม `/api/events` endpoint (SSE) ใน Flask ส่ง push event เมื่อ index คำนวณเสร็จ (ไม่ต้องเปลี่ยน DB)
 
 **สรุป:** **ไม่ต้องเปลี่ยน DB** — SQLAlchemy + REST ปัจจุบันทำงานได้ปกติหลังแก้บั๊ก logic ข้างบน
+
+---
+
+## 14b) รอบแก้บัค 2026-05 — เว็บช้า / กล้องไม่ขึ้น / สถิติเป็น 0 / เครื่องมือไฟ / เขียวทีละด้าน
+
+ผู้ใช้รายงานบั๊ก 7 ตัวพร้อมกัน — แก้ทั้งหมดในรอบนี้ โดยยึดหลัก "แก้ที่ต้นเหตุ ไม่ regression"
+
+### 14b.1 Performance: Docker เคย cap 2 GB / 2 CPU + ไม่มี GPU path
+
+**ต้นเหตุ:** `docker-compose.yml` cap CPU 2.0 / RAM 2 GB ทำให้ SUMO + YOLO + 55 กล้อง + optical flow แย่งกัน; `yolo_detector.py` ไม่เคยเรียก `model.to('cuda')` หรือ `half()` แม้รันบน NVIDIA
+
+**การแก้:**
+- `docker-compose.yml`: ขยายเป็น 4 GB / 4 CPU + เพิ่ม `backend-gpu` service ใต้ profile `gpu` (ใช้ `--profile gpu` activate)
+- `backend/Dockerfile`: เพิ่ม `ARG WITH_CUDA=0`; เมื่อ `=1` ลง torch CUDA 12.1 wheels หลัง requirements.txt
+- `backend/detection/yolo_detector.py`: helper `_detect_device()` คืน `(cuda|mps|cpu, half_bool)`; `__init__` เก็บ device + imgsz; `_load_model` เรียก `model.to(device)` + `model.half()` บน CUDA; `detect()` ส่ง `imgsz`, `half`, `device` ลง Ultralytics
+- `backend/config.py`: เพิ่ม `YOLO_IMGSZ` (480), `CAMERA_RENDER_FPS` (4)
+
+**ผลลัพธ์:** เครื่องไม่มี GPU (Intel Iris Xe) → CPU path เร็วขึ้นเล็กน้อยจาก imgsz 480 + RAM/CPU caps ที่เปิดกว้างขึ้น; เครื่องมี NVIDIA → auto FP16 บน CUDA → ~5-10× headroom ปลดล็อกที
+
+**T4 capacity:** YOLO12n @ 480px batched ~6-8 ms/frame ≈ 125 fps; ระบบใช้ ~110 fps → เพียงพอ
+
+### 14b.2 Map icon: สี่เหลี่ยมเขียว/เหลืองทับไอคอนกล้อง
+
+**ต้นเหตุ:** `frontend-next/src/components/MapView.tsx:24-31` วาด `lightIcon` (14×14 สี่เหลี่ยม) + `cameraIcon` (22×22 วงกลม) เป็น Marker คนละตัวที่ junction เดียวกัน → Leaflet ซ้อนทับกัน
+
+**การแก้:** `MapView.tsx`
+- `cameraIcon` กลายเป็น factory function รับ `lightState` แล้วเปลี่ยนสี border ตามสถานะไฟ
+- ก่อน render markers สร้าง `coveredLightKeys` จากกล้อง — ถ้าไฟอยู่ junction เดียวกับกล้อง (match `junction_name` หรือ lat/lng round 4 decimal) **ซ่อน lightIcon** แล้วโชว์สถานะผ่าน border ของ camera icon แทน
+- กล้อง marker เดียว / junction มีสี border แสดงสถานะไฟอัตโนมัติ ไม่ทับกันอีก
+
+### 14b.3 สถิติเป็น 0 ตลอด — แยก "ว่าง" กับ "ไม่มีข้อมูล" ไม่ออก
+
+**ต้นเหตุ:** Backend ส่ง `has_data` รายถนนอยู่แล้ว แต่ frontend `getTrafficIndex` มี fallback `index ?? 0` ทำให้ user ไม่รู้ว่าเลข 0 มาจาก "ว่าง" หรือ "API ไม่มีข้อมูล"
+
+**การแก้:**
+- `backend/routes/traffic.py`: ทุก response ของ `/traffic-index` และ `/road-density` มี top-level `data_available: bool` (= `any(road.has_data)`)
+- `frontend-next/src/lib/types.ts`: เพิ่ม `data_available?: boolean` บน `TrafficIndexData`
+- `frontend-next/src/lib/api.ts`: `getTrafficIndex` เก็บ flag นี้และ default index = 0 เฉพาะตอน `data_available=true`
+- `frontend-next/src/app/dashboard/page.tsx`: badge ขวาบนแสดง "ไม่มีข้อมูล" สีเหลืองเมื่อ `!data_available` (ไม่ใช่ 0.0)
+- `frontend-next/src/app/statistics/page.tsx`: panel เรียลไทม์แสดง "ยังไม่มีข้อมูลจราจร — ตรวจ SUMO/กล้อง" แทนการ์ด index
+
+### 14b.4 กล้องบางตัวขึ้น "ไม่พบสตรีมของกล้องนี้"
+
+**ต้นเหตุ:** `backend/routes/cameras.py` ส่ง 503 / 404 / empty body เมื่อ sim ไม่ active หรือ render frame ไม่สำเร็จ → `<img>` `onError` trigger → overlay ภาษาไทย
+
+**การแก้:** `routes/cameras.py`
+- `api_camera_frame`: ทุกกรณีคืน JPEG; sim ไม่พร้อม → placeholder "รอ Simulation เริ่มต้น"; render fail → "กล้อง {id} ยังไม่พร้อมใช้งาน"
+- `api_camera_stream`, `api_camera_detect_stream`: stream loop ที่ส่ง placeholder ทุก 1.0 s แทน 503 เมื่อ sim down
+- `api_camera_detect`: คืน placeholder JPEG แทน status=503/404
+
+**ผลลัพธ์:** กล้องใน roster ทุกตัวจะแสดงภาพเสมอ (จริงหรือ placeholder) — overlay error ใน `CctvFeed.tsx:88` ไม่ trigger
+
+### 14b.5 หน้า /control บั๊ก — เปลี่ยนสีไม่ได้ตอน sim ยังไม่พร้อม + ไม่มี per-direction
+
+**ต้นเหตุ:**
+1. `signal_controller.py:71-79` `set_manual_color` ตั้ง state ทุก lane เป็นสีเดียวกัน — ไม่สามารถ "เขียวเฉพาะแนวเหนือ-ใต้"
+2. `routes/admin.py` ส่ง 503 เมื่อ sim ไม่ active → frontend แสดง "เกิดข้อผิดพลาด" generic
+
+**การแก้:**
+- `services/signal_controller.py::set_manual_color(junction_id, color, direction="all")` — รับ direction param: `all/ns/ew/n/e/s/w`; หาก `direction != "all"` ใช้ `sumolib.Net` หา heading ของแต่ละ controlled lane → ตั้งเฉพาะ lane ที่ตรง direction; ถ้า heading inference ไม่สำเร็จ → fallback `all` (รักษาพฤติกรรมเดิม)
+- `routes/admin.py::api_signal_manual` + `api_signal_set_phase`: เมื่อ sim ไม่ active → 200 + `{success: false, applied: false, reason: "sim_inactive", message}` แทน 503
+- `frontend-next/src/lib/api.ts`: `setManualSignal(junction_id, state, direction)` + export type `SignalDirection`
+- `frontend-next/src/app/control/page.tsx`: เพิ่ม direction selector (ทุกแนว / NS / EW / N / E / S / W) เหนือปุ่มสี; `handleSignal` อ่าน `body.applied/reason` แสดง toast เฉพาะกรณี
+
+### 14b.6 Optical flow audit
+
+**สรุป audit:** `optical_flow.py:387-401` ใช้สูตร `per_tick = ceil(N / fps_target)` ทำให้ throughput ต่อกล้อง ≈ 1 ครั้ง/วินาที (per_tick × fps_target = N) เป็นการออกแบบที่เหมาะสมแล้ว ไม่ต้อง rewrite
+
+**การแก้เล็ก:** เพิ่ม startup log บอก effective per-cam interval ครั้งแรกที่เห็น camera count → debug ง่ายขึ้นเมื่อ tick over budget
+
+### 14b.7 ไฟเขียวเป็นคู่ → เขียวทีละด้าน (toggle ผ่าน env)
+
+**ต้นเหตุ:** SUMO programs ใน `osm.net.xml` ใช้ phase แบบคู่ NS-green/yellow + EW-green/yellow ตามมาตรฐาน OSM; `simulation._configure_traffic_lights` แค่ปรับเวลา ไม่เปลี่ยน state
+
+**การแก้:** `backend/simulation.py`
+- เพิ่ม helper `_build_sequential4_phases(tid)`: ใช้ `sumolib.Net` หา heading ของ controlled lanes → bucket เป็น N/E/S/W → สร้าง 8 phases (4 green ทีละทิศ × 25 s + 4 yellow × 3 s = cycle 112 s)
+- `_configure_traffic_lights`: อ่าน `Config.SIGNAL_PROGRAM_MODE`; เมื่อ `=sequential4` → เรียก builder ก่อน fallback เป็น pair เดิมถ้า junction มีน้อยกว่า 4 ทิศ
+- `Config.SIGNAL_PROGRAM_MODE` (config.py) ตั้ง `pair` เป็น default เพื่อ rollback ง่าย
+
+**Risk & rollback:** per-junction try/except + fallback ทำให้ junction ที่สร้าง 8-phase ไม่ได้ ใช้ program เดิม; ตั้ง `SIGNAL_PROGRAM_MODE=pair` (default) คืนพฤติกรรมเดิมทันที
+
+**Real mode:** `RealSignalController` ยังเป็น stub — เมื่อ implement ในอนาคต ให้ส่งข้อมูล state string แบบเดียวกัน (heading-aware) เพื่อให้ frontend แสดงเป็น 4 ทิศได้
+
+### 14b.8 Files changed
+
+| File | Issue |
+|---|---|
+| `backend/Dockerfile` | 1 |
+| `docker-compose.yml` | 1 |
+| `backend/config.py` | 1, 7 |
+| `backend/detection/yolo_detector.py` | 1 |
+| `backend/services/optical_flow.py` | 6 |
+| `backend/services/signal_controller.py` | 5 |
+| `backend/simulation.py` | 7 |
+| `backend/routes/cameras.py` | 4 |
+| `backend/routes/admin.py` | 5 |
+| `backend/routes/traffic.py` | 3 |
+| `frontend-next/src/components/MapView.tsx` | 2 |
+| `frontend-next/src/lib/api.ts` | 3, 5 |
+| `frontend-next/src/lib/types.ts` | 3 |
+| `frontend-next/src/app/dashboard/page.tsx` | 3 |
+| `frontend-next/src/app/statistics/page.tsx` | 3 |
+| `frontend-next/src/app/control/page.tsx` | 5 |
+| `README.md` | docs |
+| `PLAN.md` | docs |
 
 ---
 
