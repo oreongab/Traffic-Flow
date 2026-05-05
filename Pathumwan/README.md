@@ -25,6 +25,8 @@
 
 ## 🧩 Pipeline Architecture
 
+> 📐 **ดูแผนภาพ architecture แบบ visual (Mermaid):** [ARCHITECTURE.md](./ARCHITECTURE.md) — รวม system overview, pipeline flow, layered component map, และ background thread topology
+
 The system is designed around 4 major asynchronous pipelines running within `backend/app.py`:
 
 ### Camera Inventory Truth
