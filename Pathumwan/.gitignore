@@ -22,5 +22,9 @@ Thumbs.db
 # Node (frontend-next)
 frontend-next/node_modules/
 
-
-Pathumwan/backend/ai/models/
+# Models
+backend/ai/models/
+backend/detection/models/
+backend/*.pt
+backend/*.zip
+backend/yolov8n.pt
