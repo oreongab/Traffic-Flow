@@ -387,6 +387,9 @@ def _background_thread_specs() -> list[tuple[str, Callable[[], object]]]:
     if Config.SYSTEM_MODE == "real" or Config.CAMERA_BACKEND == "rtsp":
         threads.extend([
             ("RTSP Ingest", _start_rtsp_ingest),
+            # Optical Flow must start BEFORE Tracker so the tracker has flow data
+            # available on its first tick. Tracker tolerates None gracefully if not yet ready.
+            ("Optical Flow", _start_optical_flow),
             ("Tracker", _start_tracker_service),
         ])
 
@@ -439,6 +442,19 @@ def _start_rtsp_ingest():
         start_rtsp_ingest_loop()
     except Exception as e:
         print(f"  ⚠ RTSP ingest loop error: {e}")
+
+
+def _start_optical_flow():
+    """Start Sparse Lucas-Kanade optical flow worker in a background thread."""
+    if not Config.OPTICAL_FLOW_ENABLED:
+        print("  ✓ Optical flow disabled by config")
+        return
+    try:
+        from services.optical_flow import start_optical_flow_loop
+
+        start_optical_flow_loop()
+    except Exception as e:
+        print(f"  ⚠ Optical flow loop error: {e}")
 
 
 def _start_tracker_service():
@@ -577,7 +593,8 @@ def _start_signal_apply_loop():
                     manual_colors.pop(jid, None)
                     applied_signature.pop(jid, None)
 
-            # If mode flipped to AI, let AI logic take over — clear overrides.
+            # If mode flipped to AI, let the dedicated AI inference loop own all
+            # decision-making. This loop only clears any stale manual overrides.
             if mode == "ai":
                 manual_colors.clear()
 
@@ -596,7 +613,12 @@ def _start_ai_loop():
     from ai.agent import TrafficAgent
     from ai.pipeline import build_pipeline_snapshot, snapshot_to_observation
     from ai.config import AIConfig
-    from services.signal_controller import get_signal_controller, get_signal_mode, get_active_ai_algorithm
+    from services.signal_controller import (
+        get_active_ai_algorithm,
+        get_signal_controller,
+        get_signal_mode,
+        record_ai_decisions,
+    )
 
     print("🚀 Starting AI Inference Loop...")
     
@@ -661,15 +683,46 @@ def _start_ai_loop():
             
             # Formulate action payload
             actions = []
+            decisions = []
+            snapshot_by_junction = {str(j.junction_id): j for j in snapshot.junctions}
             for i, jid in enumerate(junction_ids):
                 phase_idx = int(action_indices[i]) if i < len(action_indices) else 0
+                junction_id = str(jid)
+                junction_snapshot = snapshot_by_junction.get(junction_id)
                 actions.append({
-                    "junction_id": jid,
+                    "junction_id": junction_id,
                     "target_phase": phase_idx
+                })
+                decisions.append({
+                    "junction_id": junction_id,
+                    "phase": phase_idx,
+                    "score": round(float(getattr(junction_snapshot, "queue_length", 0.0) or 0.0), 2),
+                    "cars": int(round(float(getattr(junction_snapshot, "vehicle_count", 0.0) or 0.0))),
+                    "cameras": len(getattr(junction_snapshot, "camera_ids", []) or []),
+                    "algorithm": current_algorithm,
+                    "method": "trained_model" if agent.model is not None else "rule_based",
+                    "current_phase": int(getattr(junction_snapshot, "current_phase", 0) or 0),
+                    "queue_length": round(float(getattr(junction_snapshot, "queue_length", 0.0) or 0.0), 2),
+                    "waiting_time": round(float(getattr(junction_snapshot, "waiting_time", 0.0) or 0.0), 2),
+                    "avg_speed_kmh": round(float(getattr(junction_snapshot, "avg_speed_kmh", 0.0) or 0.0), 2),
                 })
 
             # Apply actions (controller.apply_ai_actions uses sim_lock internally)
-            controller.apply_ai_actions(actions)
+            applied_actions = controller.apply_ai_actions(actions)
+            applied_by_junction = {
+                str(item.get("junction_id") or ""): item
+                for item in applied_actions
+                if isinstance(item, dict)
+            }
+            for decision in decisions:
+                applied = applied_by_junction.get(decision["junction_id"])
+                if not applied:
+                    continue
+                decision["applied"] = bool(applied.get("applied", False))
+                if applied.get("error"):
+                    decision["error"] = str(applied.get("error"))
+            if decisions:
+                record_ai_decisions(decisions)
 
             # Save report
             log_entry = {

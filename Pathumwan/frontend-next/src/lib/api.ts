@@ -95,7 +95,17 @@ export const register = (username: string, email: string, password: string) =>
 export const resetPassword = (identifier: string, newPassword: string) =>
   api.post("/auth/reset-password", { email: identifier, new_password: newPassword });
 
-export const getMe = () => api.get<User>("/auth/me");
+export async function getMe() {
+  const res = await api.get<{ success?: boolean; user?: User } | User>("/auth/me");
+  const payload = res.data;
+  const user = (typeof payload === "object" && payload !== null && "user" in payload)
+    ? payload.user
+    : payload;
+  return {
+    ...res,
+    data: user as User,
+  };
+}
 
 export const updateProfile = (data: { username?: string; email?: string; password?: string }) =>
   api.put("/auth/profile", data);
@@ -120,13 +130,18 @@ export async function getTrafficLights(): Promise<TrafficLight[]> {
 export async function getTrafficIndex(): Promise<TrafficIndexData> {
   return getCached("traffic-index", 2500, async () => {
     const res = await api.get("/traffic-index");
+    // Preserve null when the backend reports no data so the UI can show
+    // "ไม่มีข้อมูล" instead of a misleading `0`. Older callers that read
+    // `index` as a number still get a number when data_available is true.
+    const dataAvailable = res.data.data_available ?? true;
     return {
-      index: res.data.index ?? 0,
+      index: dataAvailable ? (res.data.index ?? 0) : 0,
       level: res.data.level ?? "คล่องตัว",
       color: res.data.color ?? "#22c55e",
       roads: res.data.roads ?? [],
       timestamp: res.data.timestamp ?? "",
       source: res.data.source ?? "unknown",
+      data_available: dataAvailable,
     };
   });
 }
@@ -154,15 +169,15 @@ export async function getCameras(): Promise<Camera[]> {
 }
 
 export function getCameraFrameUrl(cameraId: string): string {
-  return `${API_BASE}/cameras/${cameraId}/frame`;
+  return `${API_BASE}/cameras/${encodeURIComponent(cameraId)}/frame`;
 }
 
 export function getCameraStreamUrl(cameraId: string): string {
-  return `${API_BASE}/cameras/${cameraId}/stream`;
+  return `${API_BASE}/cameras/${encodeURIComponent(cameraId)}/stream`;
 }
 
 export function getCameraDetectStreamUrl(cameraId: string): string {
-  return `${API_BASE}/cameras/${cameraId}/detect/stream`;
+  return `${API_BASE}/cameras/${encodeURIComponent(cameraId)}/detect/stream`;
 }
 
 export async function getCameraRuntimeStatuses(): Promise<CameraRuntimeStatus[]> {
@@ -182,7 +197,7 @@ export async function getCameraRuntimeBundle(cameraId: string): Promise<CameraRu
 
 export async function getCameraCounts(cameraId: string): Promise<CameraCountsSnapshot> {
   return getCached(`camera-counts:${cameraId}`, 1200, async () => {
-    const res = await api.get(`/cameras/${cameraId}/counts`);
+    const res = await api.get(`/cameras/${encodeURIComponent(cameraId)}/counts`);
     return {
       camera_id: res.data.camera_id || cameraId,
       counts: res.data.counts || { car: 0, motorcycle: 0, bus: 0, truck: 0, total: 0 },
@@ -196,7 +211,7 @@ export async function getCameraCounts(cameraId: string): Promise<CameraCountsSna
 export async function getCameraVehicles(cameraId: string, radius?: number): Promise<CameraVehicleSnapshot> {
   const params = radius ? `?radius=${radius}` : "";
   return getCached(`camera-vehicles:${cameraId}:${radius ?? "default"}`, 1200, async () => {
-    const res = await api.get(`/cameras/${cameraId}/vehicles${params}`);
+    const res = await api.get(`/cameras/${encodeURIComponent(cameraId)}/vehicles${params}`);
     return {
       vehicles: res.data.vehicles || [],
       counts: res.data.counts || { car: 0, motorcycle: 0, bus: 0, truck: 0, total: 0 },
@@ -241,8 +256,13 @@ export async function getAvailableYears(): Promise<number[]> {
 export const setSignalMode = (mode: "ai" | "manual") =>
   api.post("/admin/signal/mode", { mode });
 
-export const setManualSignal = (junction_id: string, state: string) =>
-  api.post("/admin/signal/manual", { junction_id, state });
+export type SignalDirection = "all" | "ns" | "ew" | "n" | "e" | "s" | "w";
+
+export const setManualSignal = (
+  junction_id: string,
+  state: string,
+  direction: SignalDirection = "all"
+) => api.post("/admin/signal/manual", { junction_id, state, direction });
 
 export async function getAIStatus(): Promise<AIStatus> {
   const res = await api.get("/admin/ai-status");

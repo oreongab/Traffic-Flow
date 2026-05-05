@@ -107,8 +107,8 @@ def capture_cctv_frame(camera_id, zoom_level="near", show_detection=False):
         detector = None
         if show_detection:
             try:
-                from detection.yolo_detector import YOLODetector
-                detector = YOLODetector()
+                from detection.yolo_detector import get_shared_detector
+                detector = get_shared_detector()
             except Exception:
                 pass
 
@@ -216,17 +216,110 @@ def get_sumo_command():
     ]
 
 
+def _build_sequential4_phases(tid):
+    """Build an 8-phase "เขียวทีละทิศ" program for a 4-arm TLS.
+
+    Returns a list of ``traci.trafficlight.Phase`` (4 green + 4 yellow) or
+    ``None`` if we can't infer ≥4 distinct lane directions (e.g. T-junctions
+    or sumolib unavailable). Caller falls back to the legacy program in that
+    case.
+
+    The order of greens is N → E → S → W. Each green is 25 s, each yellow 3 s
+    so the full cycle is 112 s (within Bangkok's 90-120 s norm).
+    """
+    try:
+        import sumolib
+        import math as _math
+    except Exception:
+        return None
+    try:
+        net = sumolib.net.readNet(NET_FILE, withInternal=False)
+    except Exception:
+        return None
+
+    try:
+        controlled = list(traci.trafficlight.getControlledLanes(tid))
+    except Exception:
+        return None
+    L = len(controlled)
+    if L == 0:
+        return None
+
+    def _heading_bucket(lane_id):
+        try:
+            lane = net.getLane(lane_id)
+            edge = lane.getEdge()
+            fx, fy = edge.getFromNode().getCoord()
+            tx, ty = edge.getToNode().getCoord()
+            heading = (_math.degrees(_math.atan2(ty - fy, tx - fx)) + 360.0) % 360.0
+        except Exception:
+            return None
+        if 45.0 <= heading < 135.0:
+            return "n"
+        if 135.0 <= heading < 225.0:
+            return "w"
+        if 225.0 <= heading < 315.0:
+            return "s"
+        return "e"
+
+    buckets = [_heading_bucket(lane) for lane in controlled]
+    distinct = {b for b in buckets if b is not None}
+    if len(distinct) < 4:
+        # 3-arm or heading inference incomplete — keep legacy program.
+        return None
+
+    def _state_for(direction):
+        chars = []
+        for b in buckets:
+            if b == direction:
+                chars.append("G")
+            else:
+                chars.append("r")
+        return "".join(chars)
+
+    def _yellow_for(direction):
+        chars = []
+        for b in buckets:
+            if b == direction:
+                chars.append("y")
+            else:
+                chars.append("r")
+        return "".join(chars)
+
+    order = ["n", "e", "s", "w"]
+    phases = []
+    for direction in order:
+        phases.append(traci.trafficlight.Phase(
+            duration=25.0, state=_state_for(direction), minDur=15.0, maxDur=35.0,
+        ))
+        phases.append(traci.trafficlight.Phase(
+            duration=3.0, state=_yellow_for(direction), minDur=3.0, maxDur=3.0,
+        ))
+    return phases
+
+
 def _configure_traffic_lights():
     """
     Configure traffic lights with realistic Pathumwan signal programs.
     Bangkok inner city typically uses 90-120 second cycles.
+
+    Two modes (selected by ``Config.SIGNAL_PROGRAM_MODE``):
+      • "pair" (default)  — keep SUMO's NS/EW paired phases; rebalance to 90 s.
+      • "sequential4"     — overwrite each 4-arm TLS with an 8-phase logic
+        that turns each direction green by itself (Issue 7). Falls back to
+        "pair" per-junction when the heading-inference fails.
     """
+    from config import Config as _Cfg
     global tls_ids
     try:
         tls_ids = list(traci.trafficlight.getIDList())
     except Exception:
         tls_ids = []
         return
+
+    use_sequential4 = (_Cfg.SIGNAL_PROGRAM_MODE == "sequential4")
+    sequential_count = 0
+    pair_count = 0
 
     for tid in tls_ids:
         try:
@@ -239,46 +332,58 @@ def _configure_traffic_lights():
             if n_phases == 0:
                 continue
 
-            # Count how many green phases vs yellow/red
-            green_phases = [i for i, p in enumerate(logic.phases) if "G" in p.state or "g" in p.state]
-            yellow_phases = [i for i, p in enumerate(logic.phases) if "y" in p.state]
-            red_phases = [i for i, p in enumerate(logic.phases) if all(c in "r" for c in p.state)]
+            new_phases = None
+            program_id = "pathumwan_90s"
+            if use_sequential4:
+                seq_phases = _build_sequential4_phases(tid)
+                if seq_phases is not None:
+                    new_phases = seq_phases
+                    program_id = "pathumwan_seq4"
+                    sequential_count += 1
 
-            # Build a realistic 90-second cycle
-            CYCLE = 90
-            new_phases = []
-            for i, phase in enumerate(logic.phases):
-                if i in green_phases:
-                    # Distribute green time equally among green phases
-                    green_time = max(15, (CYCLE - len(yellow_phases) * 3 - len(red_phases) * 2) // max(1, len(green_phases)))
-                    new_phases.append(traci.trafficlight.Phase(
-                        duration=float(green_time),
-                        state=phase.state,
-                        minDur=float(green_time * 0.6),
-                        maxDur=float(green_time * 1.4),
-                    ))
-                elif i in yellow_phases:
-                    new_phases.append(traci.trafficlight.Phase(
-                        duration=3.0, state=phase.state, minDur=3.0, maxDur=3.0,
-                    ))
-                else:
-                    # All-red clearance
-                    new_phases.append(traci.trafficlight.Phase(
-                        duration=2.0, state=phase.state, minDur=2.0, maxDur=2.0,
-                    ))
+            if new_phases is None:
+                # Legacy paired-phase rebalance (current behaviour).
+                green_phases = [i for i, p in enumerate(logic.phases) if "G" in p.state or "g" in p.state]
+                yellow_phases = [i for i, p in enumerate(logic.phases) if "y" in p.state]
+                red_phases = [i for i, p in enumerate(logic.phases) if all(c in "r" for c in p.state)]
+
+                CYCLE = 90
+                new_phases = []
+                for i, phase in enumerate(logic.phases):
+                    if i in green_phases:
+                        green_time = max(15, (CYCLE - len(yellow_phases) * 3 - len(red_phases) * 2) // max(1, len(green_phases)))
+                        new_phases.append(traci.trafficlight.Phase(
+                            duration=float(green_time),
+                            state=phase.state,
+                            minDur=float(green_time * 0.6),
+                            maxDur=float(green_time * 1.4),
+                        ))
+                    elif i in yellow_phases:
+                        new_phases.append(traci.trafficlight.Phase(
+                            duration=3.0, state=phase.state, minDur=3.0, maxDur=3.0,
+                        ))
+                    else:
+                        new_phases.append(traci.trafficlight.Phase(
+                            duration=2.0, state=phase.state, minDur=2.0, maxDur=2.0,
+                        ))
+                pair_count += 1
 
             new_logic = traci.trafficlight.Logic(
-                programID="pathumwan_90s",
+                programID=program_id,
                 type=0,
                 currentPhaseIndex=0,
                 phases=new_phases,
             )
             traci.trafficlight.setProgramLogic(tid, new_logic)
-            traci.trafficlight.setProgram(tid, "pathumwan_90s")
-        except Exception:
+            traci.trafficlight.setProgram(tid, program_id)
+        except Exception as exc:
+            print(f"  ⚠ TLS configure failed [{tid}]: {exc}")
             continue
 
-    print(f"  Configured {len(tls_ids)} traffic lights (90s cycle)")
+    if use_sequential4:
+        print(f"  Configured {len(tls_ids)} traffic lights (sequential4: {sequential_count}, pair-fallback: {pair_count})")
+    else:
+        print(f"  Configured {len(tls_ids)} traffic lights (90s pair cycle)")
 
 
 def _colorize_vehicles():
@@ -355,6 +460,7 @@ def _build_road_mapping():
         "PHAYATHAI": ["phayathai", "phaya thai", "พญาไท"],
         "RATCHADAMRI": ["ratchadamri", "ราชดำริ"],
         "PLOENCHIT": ["ploenchit", "เพลินจิต"],
+        "PHETCHABURI": ["phetchaburi", "เพชรบุรี"],
         "BANTHATTHONG": ["banthat thong", "banthatthong", "บรรทัดทอง"],
         "CHARUMUEANG": ["charu mueang", "charumueang", "จารุเมือง"],
         "WITTHAYU": ["witthayu", "wireless", "วิทยุ"],
