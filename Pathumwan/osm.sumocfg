@@ -26,6 +26,7 @@
         <time-to-teleport value="300"/>
         <time-to-teleport.highways value="0"/>
         <tls.actuated.jam-threshold value="30"/>
+        <scale value="0.3"/> <!-- Reduce traffic volume to 30% to prevent gridlock -->
     </processing>
 
     <routing>

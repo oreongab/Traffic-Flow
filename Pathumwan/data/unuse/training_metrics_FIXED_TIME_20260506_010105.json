@@ -1,0 +1,102 @@
+{
+  "algorithm": "FIXED_TIME",
+  "total_timesteps": 0,
+  "training_time_seconds": 0.0,
+  "data_source": {
+    "description": "Pathumwan traffic — otp_66_05.csv (2022) + opendata-jan_ok.xlsx (2023)",
+    "vehicle_proportions": {
+      "passenger": 0.706,
+      "van": 0.237,
+      "bus": 0.02,
+      "truck": 0.01,
+      "motorcycle": 0.027
+    },
+    "station_count": 7
+  },
+  "reward_weights": {
+    "waiting_time": -0.4,
+    "throughput": 1.0,
+    "avg_speed": 0.3,
+    "queue_length": -0.3,
+    "phase_switch": -0.1,
+    "emergency_penalty": -2.0
+  },
+  "hyperparameters": {
+    "learning_rate": 0.0003,
+    "gamma": 0.99,
+    "batch_size": 256,
+    "n_steps": 2048,
+    "n_epochs": 10,
+    "entropy_coef": 0.02,
+    "action_interval": 10,
+    "yellow_time": 3,
+    "max_episode_steps": 3600
+  },
+  "training_summary": {},
+  "evaluation_summary": {
+    "total_episodes": 5,
+    "avg_reward": 75.8,
+    "best_reward": 75.8,
+    "worst_reward": 75.8,
+    "avg_reward_first_n": 75.8,
+    "avg_reward_last_n": 75.8,
+    "reward_improvement_pct": 0.0,
+    "avg_throughput": 0.0,
+    "avg_waiting_time": 0.0,
+    "best_throughput": 0,
+    "worst_waiting_time": 0.0
+  },
+  "training_episodes": [],
+  "evaluation_episodes": [
+    {
+      "episode": 0,
+      "phase": "evaluation",
+      "timestamp": 1778004072.6699383,
+      "steps": 3610,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 0,
+      "episode_throughput": 0,
+      "episode_reward": 75.8
+    },
+    {
+      "episode": 1,
+      "phase": "evaluation",
+      "timestamp": 1778004079.5673006,
+      "steps": 3610,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 0,
+      "episode_throughput": 0,
+      "episode_reward": 75.8
+    },
+    {
+      "episode": 2,
+      "phase": "evaluation",
+      "timestamp": 1778004086.60539,
+      "steps": 3610,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 0,
+      "episode_throughput": 0,
+      "episode_reward": 75.8
+    },
+    {
+      "episode": 3,
+      "phase": "evaluation",
+      "timestamp": 1778004093.4695544,
+      "steps": 3610,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 0,
+      "episode_throughput": 0,
+      "episode_reward": 75.8
+    },
+    {
+      "episode": 4,
+      "phase": "evaluation",
+      "timestamp": 1778004100.2161093,
+      "steps": 3610,
+      "total_waiting_time": 0.0,
+      "vehicle_count": 0,
+      "episode_throughput": 0,
+      "episode_reward": 75.8
+    }
+  ]
+}

@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2026-05-03T10:17:24.412074+07:00 by Eclipse SUMO sumo 1.26.0
+<!-- generated on 2026-05-06T02:37:07.714753+07:00 by Eclipse SUMO sumo 1.26.0
 <sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
-        <net-file value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.net.xml"/>
-        <route-files value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.passenger.rou.xml,C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.motorcycle.rou.xml,C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.truck.rou.xml,C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.bus.rou.xml"/>
-        <additional-files value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.poly.xml,C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\output.add.xml"/>
+        <net-file value="C:\src\github\Traffic-Flow\Pathumwan\backend\..\osm.net.xml"/>
+        <route-files value="C:\src\github\Traffic-Flow\Pathumwan\backend\..\osm.dataset.rou.xml.gz"/>
+        <additional-files value="C:\src\github\Traffic-Flow\Pathumwan\backend\..\osm.poly.xml,C:\src\github\Traffic-Flow\Pathumwan\backend\..\output.add.xml"/>
     </input>
 
     <output>
-        <tripinfo-output value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\tripinfos.xml"/>
-        <statistic-output value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\stats.xml"/>
+        <tripinfo-output value="C:\src\github\Traffic-Flow\Pathumwan\backend\..\tripinfos.xml"/>
+        <statistic-output value="C:\src\github\Traffic-Flow\Pathumwan\backend\..\stats.xml"/>
     </output>
 
     <time>
-        <begin value="0"/>
-        <end value="3600"/>
+        <begin value="25200"/>
+        <end value="64800"/>
         <step-length value="1.0"/>
     </time>
 
@@ -24,7 +24,6 @@
         <ignore-route-errors value="true"/>
         <time-to-teleport value="300"/>
         <time-to-teleport.highways value="0"/>
-        <waiting-time-memory value="300"/>
         <tls.actuated.jam-threshold value="30"/>
     </processing>
 
@@ -41,25 +40,18 @@
     </report>
 
     <traci_server>
-        <remote-port value="58833"/>
+        <remote-port value="60978"/>
     </traci_server>
 
     <gui_only>
-        <gui-settings-file value="C:\src\github\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.view.xml"/>
+        <gui-settings-file value="C:\src\github\Traffic-Flow\Pathumwan\backend\..\osm.view.xml"/>
+        <quit-on-end value="false"/>
+        <start value="true"/>
+        <delay value="50"/>
     </gui_only>
 
 </sumoConfiguration>
 -->
 
 <statistics xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/statistic_file.xsd">
-    <performance clockBegin="137883.09" clockEnd="137956.34" clockDuration="73.24" traciDuration="6.56" realTimeFactor="49.19" vehicleUpdatesPerSecond="77045.86" personUpdatesPerSecond="0.00" begin="0.00" end="3603.00" duration="3603.00"/>
-    <vehicles loaded="7020" inserted="6874" running="3125" waiting="146"/>
-    <teleports total="1338" jam="919" yield="368" wrongLane="51"/>
-    <safety collisions="0" emergencyStops="0" emergencyBraking="2"/>
-    <persons loaded="0" running="0" jammed="0"/>
-    <personTeleports total="0" abortWait="0" wrongDest="0"/>
-    <vehicleTripStatistics count="3749" routeLength="2784.28" speed="8.35" duration="472.78" waitingTime="216.11" timeLoss="274.17" departDelay="2.34" departDelayWaiting="-1.00" totalTravelTime="1772461.00" totalDepartDelay="8790.11"/>
-    <pedestrianStatistics number="0" routeLength="0.00" duration="0.00" timeLoss="0.00"/>
-    <rideStatistics number="0"/>
-    <transportStatistics number="0"/>
 </statistics>

@@ -325,35 +325,38 @@ def main():
     )
 
     # Create training callback to capture per-episode metrics DURING training
-    from stable_baselines3.common.callbacks import BaseCallback
+    # Only import SB3 callback for RL algorithms that actually need it
+    callback = None
+    if args.algorithm not in ("RULE_BASED", "FIXED_TIME"):
+        from stable_baselines3.common.callbacks import BaseCallback
 
-    class EpisodeMetricsCallback(BaseCallback):
-        """Captures per-episode metrics during SB3 training loop."""
+        class EpisodeMetricsCallback(BaseCallback):
+            """Captures per-episode metrics during SB3 training loop."""
 
-        def __init__(self, logger, verbose=0):
-            super().__init__(verbose)
-            self._metrics_logger = logger
-            self._episode_count = 0
+            def __init__(self, logger, verbose=0):
+                super().__init__(verbose)
+                self._metrics_logger = logger
+                self._episode_count = 0
 
-        def _on_step(self):
-            infos = self.locals.get("infos", [])
-            dones = self.locals.get("dones", [])
+            def _on_step(self):
+                infos = self.locals.get("infos", [])
+                dones = self.locals.get("dones", [])
 
-            if dones is not None and infos is not None:
-                for i, done in enumerate(dones):
-                    if done and i < len(infos):
-                        info = infos[i]
-                        self._episode_count += 1
-                        self._metrics_logger.on_training_episode_end(
-                            self._episode_count, info
-                        )
-                        if self.verbose > 0:
-                            print(f"  📈 Train ep {self._episode_count}: "
-                                  f"reward={info.get('episode_reward', 0):.2f}, "
-                                  f"throughput={info.get('episode_throughput', 0)}")
-            return True
+                if dones is not None and infos is not None:
+                    for i, done in enumerate(dones):
+                        if done and i < len(infos):
+                            info = infos[i]
+                            self._episode_count += 1
+                            self._metrics_logger.on_training_episode_end(
+                                self._episode_count, info
+                            )
+                            if self.verbose > 0:
+                                print(f"  📈 Train ep {self._episode_count}: "
+                                      f"reward={info.get('episode_reward', 0):.2f}, "
+                                      f"throughput={info.get('episode_throughput', 0)}")
+                return True
 
-    callback = EpisodeMetricsCallback(metrics_logger, verbose=1)
+        callback = EpisodeMetricsCallback(metrics_logger, verbose=1)
 
     # Create and train agent
     from ai.agent import TrafficAgent
@@ -376,8 +379,10 @@ def main():
     metrics_logger.set_training_time(t_start, time.time(), args.timesteps)
 
     if success:
-        agent.save()
-        print(f"\n✅ Training complete in {t_elapsed:.0f}s")
+        # Only save model weights for RL algorithms (FIXED_TIME/RULE_BASED have no weights)
+        if args.algorithm not in ("RULE_BASED", "FIXED_TIME"):
+            agent.save()
+        print(f"\n✅ {'Evaluation' if args.algorithm in ('RULE_BASED', 'FIXED_TIME') else 'Training'} complete in {t_elapsed:.0f}s")
 
         # Run evaluation episodes and collect metrics
         n_eval = 5
@@ -400,7 +405,8 @@ def main():
 
         print(metrics_logger.summary())
         print(f"\n📁 Metrics saved to: {os.path.join(DATA_DIR, metrics_filename)}")
-        print(f"📁 Model saved to:   {os.path.join(AIConfig.MODEL_DIR, args.algorithm.lower() + '_traffic.zip')}")
+        if args.algorithm not in ("RULE_BASED", "FIXED_TIME"):
+            print(f"📁 Model saved to:   {os.path.join(AIConfig.MODEL_DIR, args.algorithm.lower() + '_traffic.zip')}")
     else:
         print("❌ Training failed. Check dependencies (pip install stable-baselines3 gymnasium).")
 
