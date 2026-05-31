@@ -73,6 +73,9 @@ class SumoTrafficEnv(GymEnv):
         self._episode_total_wait = 0.0
         self._episode_throughput = 0
         self._episode_reward = 0.0
+        self._episode_speed_sum = 0.0
+        self._episode_queue_sum = 0.0
+        self._episode_reward_breakdown = {}
 
         # State: 7 features per junction (see AIConfig.STATE_FEATURES)
         n_features = len(AIConfig.STATE_FEATURES)
@@ -91,6 +94,9 @@ class SumoTrafficEnv(GymEnv):
         self._episode_total_wait = 0.0
         self._episode_throughput = 0
         self._episode_reward = 0.0
+        self._episode_speed_sum = 0.0
+        self._episode_queue_sum = 0.0
+        self._episode_reward_breakdown = {}
 
         # Start SUMO with a unique label to avoid port conflicts
         try:
@@ -334,7 +340,7 @@ class SumoTrafficEnv(GymEnv):
 
         # Calculate reward using the unified reward module
         # Pass cached controlled lanes to avoid redundant TraCI calls
-        reward = combined_reward(
+        reward, breakdown = combined_reward(
             traci, self.junction_ids,
             arrived_count,
             old_phases=old_phases, new_phases=new_phases,
@@ -345,6 +351,26 @@ class SumoTrafficEnv(GymEnv):
         self._episode_reward += reward
         self._episode_throughput += arrived_count
         self._episode_total_wait += self._total_waiting_time()  # accumulate, not snapshot
+        
+        for k, v in breakdown.items():
+            self._episode_reward_breakdown[k] = self._episode_reward_breakdown.get(k, 0.0) + v
+            
+        # Calculate and track raw speed and queue
+        step_speed_sum = 0.0
+        step_queue_sum = 0
+        lane_count = 0
+        for jid in self.junction_ids:
+            for lane in self._controlled_lanes.get(jid, set()):
+                try:
+                    step_speed_sum += _to_float(traci.lane.getLastStepMeanSpeed(lane))
+                    step_queue_sum += int(traci.lane.getLastStepHaltingNumber(lane))
+                    lane_count += 1
+                except Exception:
+                    pass
+                    
+        if lane_count > 0:
+            self._episode_speed_sum += (step_speed_sum / lane_count) * 3.6  # convert to km/h
+        self._episode_queue_sum += step_queue_sum
 
         # Get current vehicle count cheaply
         try:
@@ -355,12 +381,20 @@ class SumoTrafficEnv(GymEnv):
         obs = self._get_observation()
         terminated = False
         truncated = self.current_step >= AIConfig.MAX_EPISODE_STEPS
+        
+        # Calculate averages for the episode so far
+        avg_speed = self._episode_speed_sum / max(1, self.current_step)
+        avg_queue = self._episode_queue_sum / max(1, self.current_step)
+        
         info = {
             "step": self.current_step,
             "total_waiting_time": self._episode_total_wait,
             "vehicle_count": current_vehicle_count,
             "episode_throughput": self._episode_throughput,
             "episode_reward": self._episode_reward,
+            "episode_reward_components": self._episode_reward_breakdown.copy(),
+            "avg_speed_kmh": avg_speed,
+            "avg_queue_length": avg_queue,
         }
 
         return obs, reward, terminated, truncated, info

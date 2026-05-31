@@ -1,6 +1,6 @@
 {
-  "dataset": "data\\Dataset.csv",
-  "net": "osm.net.xml",
+  "dataset": "C:\\src\\antigravity\\Traffic-Flow\\Pathumwan\\data\\Dataset.csv",
+  "net": "C:\\src\\antigravity\\Traffic-Flow\\Pathumwan\\osm.net.xml",
   "seed": 42,
   "aliases": {
     "edge_phayathai_in": {

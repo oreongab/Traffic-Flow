@@ -2,6 +2,8 @@ import os
 import sys
 import time
 import json
+import csv
+from datetime import datetime
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -120,6 +122,9 @@ def main():
         algo_wait_times = []
         algo_throughputs = []
         algo_rewards = []
+        algo_speeds = []
+        algo_queues = []
+        algo_episodes = []
 
         for ep in range(episodes_per_model):
             obs, info = env.reset()
@@ -134,42 +139,132 @@ def main():
 
             wait_time = info.get("total_waiting_time", 0)
             throughput = info.get("episode_throughput", 0)
+            avg_speed = info.get("avg_speed_kmh", 0)
+            avg_queue = info.get("avg_queue_length", 0)
 
             algo_wait_times.append(wait_time)
             algo_throughputs.append(throughput)
             algo_rewards.append(total_reward)
+            algo_speeds.append(avg_speed)
+            algo_queues.append(avg_queue)
+            
+            ep_record = {
+                "episode": ep + 1,
+                "wait_time": wait_time,
+                "throughput": throughput,
+                "reward": total_reward,
+                "avg_speed_kmh": avg_speed,
+                "avg_queue_length": avg_queue,
+                "reward_components": info.get("episode_reward_components", {})
+            }
+            algo_episodes.append(ep_record)
 
-            print(f"  Ep {ep+1}: Wait = {wait_time:.1f}s | Throughput = {throughput} | Reward = {total_reward:.2f}")
+            print(f"  Ep {ep+1}: Wait = {wait_time:.1f}s | Throughput = {throughput} | Reward = {total_reward:.2f} | Speed = {avg_speed:.1f}km/h")
 
         env.close()
 
         results[algo] = {
             "junction_count": len(junction_ids),
-            "avg_wait_time": float(np.mean(algo_wait_times)),
-            "avg_throughput": float(np.mean(algo_throughputs)),
-            "avg_reward": float(np.mean(algo_rewards)),
+            "episodes_run": episodes_per_model,
+            "metrics": {
+                "wait_time": {
+                    "mean": float(np.mean(algo_wait_times)),
+                    "std": float(np.std(algo_wait_times)),
+                    "min": float(np.min(algo_wait_times)),
+                    "max": float(np.max(algo_wait_times)),
+                },
+                "throughput": {
+                    "mean": float(np.mean(algo_throughputs)),
+                    "std": float(np.std(algo_throughputs)),
+                    "min": float(np.min(algo_throughputs)),
+                    "max": float(np.max(algo_throughputs)),
+                },
+                "reward": {
+                    "mean": float(np.mean(algo_rewards)),
+                    "std": float(np.std(algo_rewards)),
+                    "min": float(np.min(algo_rewards)),
+                    "max": float(np.max(algo_rewards)),
+                },
+                "speed_kmh": {
+                    "mean": float(np.mean(algo_speeds)),
+                    "std": float(np.std(algo_speeds)),
+                },
+                "queue_length": {
+                    "mean": float(np.mean(algo_queues)),
+                    "std": float(np.std(algo_queues)),
+                }
+            },
+            "episodes": algo_episodes
         }
+        
+    # Calculate % improvement against baseline (FIXED_TIME or RULE_BASED)
+    baseline_algo = "FIXED_TIME" if "FIXED_TIME" in results else ("RULE_BASED" if "RULE_BASED" in results else None)
+    if baseline_algo:
+        base_reward = results[baseline_algo]["metrics"]["reward"]["mean"]
+        base_wait = results[baseline_algo]["metrics"]["wait_time"]["mean"]
+        for algo in results:
+            algo_reward = results[algo]["metrics"]["reward"]["mean"]
+            algo_wait = results[algo]["metrics"]["wait_time"]["mean"]
+            
+            # For reward, higher is better
+            if base_reward != 0:
+                reward_imp = ((algo_reward - base_reward) / abs(base_reward)) * 100
+                results[algo]["metrics"]["reward"]["improvement_pct"] = float(reward_imp)
+                
+            # For wait time, lower is better
+            if base_wait != 0:
+                wait_imp = ((base_wait - algo_wait) / base_wait) * 100
+                results[algo]["metrics"]["wait_time"]["improvement_pct"] = float(wait_imp)
 
     # Print summary
     print("\n\n📊 BENCHMARK RESULTS")
-    print("=========================================================")
-    print(f"{'Algorithm':<15} | {'Junctions':<10} | {'Avg Wait (s)':<14} | {'Avg Throughput':<15} | {'Avg Reward'}")
-    print("-" * 75)
-    for algo, metrics in results.items():
+    print("=========================================================================================")
+    print(f"{'Algorithm':<12} | {'Junctions':<9} | {'Avg Wait (s) ± SD':<18} | {'Throughput ± SD':<16} | {'Reward ± SD'}")
+    print("-" * 89)
+    for algo, res in results.items():
+        m = res["metrics"]
         print(
-            f"{algo:<15} | {metrics['junction_count']:<10} | "
-            f"{metrics['avg_wait_time']:<14.1f} | "
-            f"{metrics['avg_throughput']:<15.1f} | "
-            f"{metrics['avg_reward']:.2f}"
+            f"{algo:<12} | {res['junction_count']:<9} | "
+            f"{m['wait_time']['mean']:<8.1f} ± {m['wait_time']['std']:<5.1f} | "
+            f"{m['throughput']['mean']:<8.1f} ± {m['throughput']['std']:<4.1f} | "
+            f"{m['reward']['mean']:<8.2f} ± {m['reward']['std']:.2f}"
         )
-    print("=========================================================")
+    print("=========================================================================================")
+
+    output_data = {
+        "timestamp": datetime.now().isoformat(),
+        "episodes_per_model": episodes_per_model,
+        "results": results
+    }
 
     # Save to JSON
     out_path = os.path.join(DATA_DIR, "benchmark_results.json")
     with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=4)
+        json.dump(output_data, f, indent=4)
+        
+    # Save to CSV
+    csv_path = os.path.join(DATA_DIR, "benchmark_results.csv")
+    with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "Algorithm", "Junctions", "Episodes", 
+            "Wait_Mean", "Wait_SD", "Wait_Min", "Wait_Max", "Wait_Imp_%",
+            "Throughput_Mean", "Throughput_SD", "Throughput_Min", "Throughput_Max",
+            "Reward_Mean", "Reward_SD", "Reward_Min", "Reward_Max", "Reward_Imp_%",
+            "Speed_Mean", "Queue_Mean"
+        ])
+        for algo, res in results.items():
+            m = res["metrics"]
+            writer.writerow([
+                algo, res["junction_count"], res["episodes_run"],
+                round(m["wait_time"]["mean"], 2), round(m["wait_time"]["std"], 2), round(m["wait_time"]["min"], 2), round(m["wait_time"]["max"], 2), round(m["wait_time"].get("improvement_pct", 0.0), 2),
+                round(m["throughput"]["mean"], 2), round(m["throughput"]["std"], 2), round(m["throughput"]["min"], 2), round(m["throughput"]["max"], 2),
+                round(m["reward"]["mean"], 4), round(m["reward"]["std"], 4), round(m["reward"]["min"], 4), round(m["reward"]["max"], 4), round(m["reward"].get("improvement_pct", 0.0), 2),
+                round(m["speed_kmh"]["mean"], 2), round(m["queue_length"]["mean"], 2)
+            ])
 
-    print(f"\n📁 Saved detailed results to {out_path}")
+    print(f"\n📁 Saved JSON results to {out_path}")
+    print(f"📁 Saved CSV summary to {csv_path}")
 
 
 if __name__ == "__main__":

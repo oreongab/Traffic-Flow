@@ -122,10 +122,30 @@ def combined_reward(traci, junction_ids, arrived_count,
                 pass
 
     r = 0.0
-    r += w["waiting_time"] * waiting_time_reward(traci, all_lanes)
-    r += w["throughput"] * throughput_reward(arrived_count)
-    r += w["avg_speed"] * speed_reward(traci, all_lanes)
-    r += w["queue_length"] * queue_penalty(traci, all_lanes, len(junction_ids))
-    r += w.get("phase_switch", 0.0) * phase_switch_penalty(old_phases or [], new_phases or [])
-    r += w["emergency_penalty"] * emergency_wait_penalty(traci, all_lanes)
-    return r
+    breakdown = {}
+    
+    val = waiting_time_reward(traci, all_lanes)
+    r += w["waiting_time"] * val
+    breakdown["waiting_time"] = w["waiting_time"] * val
+    
+    val = throughput_reward(arrived_count)
+    r += w["throughput"] * val
+    breakdown["throughput"] = w["throughput"] * val
+    
+    val = speed_reward(traci, all_lanes)
+    r += w["avg_speed"] * val
+    breakdown["avg_speed"] = w["avg_speed"] * val
+    
+    val = queue_penalty(traci, all_lanes, len(junction_ids))
+    r += w["queue_length"] * val
+    breakdown["queue_length"] = w["queue_length"] * val
+    
+    val = phase_switch_penalty(old_phases or [], new_phases or [])
+    r += w.get("phase_switch", 0.0) * val
+    breakdown["phase_switch"] = w.get("phase_switch", 0.0) * val
+    
+    val = emergency_wait_penalty(traci, all_lanes)
+    r += w["emergency_penalty"] * val
+    breakdown["emergency_penalty"] = w["emergency_penalty"] * val
+    
+    return r, breakdown

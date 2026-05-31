@@ -21,6 +21,7 @@ import json
 import os
 import sys
 import time
+import csv
 
 # Fix Windows console encoding for emojis
 if sys.platform == "win32":
@@ -54,6 +55,44 @@ class TrainingMetricsLogger:
         self._training_start_time = None
         self._training_end_time = None
         self._total_timesteps = 0
+        self._agent_info = {}
+
+    def set_agent_info(self, agent, env):
+        try:
+            import stable_baselines3
+            self._agent_info["sb3_version"] = stable_baselines3.__version__
+        except ImportError:
+            self._agent_info["sb3_version"] = "unknown"
+            
+        try:
+            import traci
+            self._agent_info["sumo_version"] = traci.getVersion()[1]
+        except Exception:
+            self._agent_info["sumo_version"] = "unknown"
+            
+        self._agent_info["observation_space_shape"] = list(env.observation_space.shape) if hasattr(env, "observation_space") else []
+        self._agent_info["action_space_shape"] = [int(x) for x in env.action_space.nvec] if hasattr(env.action_space, "nvec") else []
+        self._agent_info["junction_ids"] = env.junction_ids if hasattr(env, "junction_ids") else []
+        
+        # Extract model specific hyperparams
+        hyperparams = {}
+        if hasattr(agent, "model") and agent.model:
+            m = agent.model
+            hyperparams["learning_rate"] = getattr(m, "learning_rate", None)
+            hyperparams["gamma"] = getattr(m, "gamma", None)
+            if self._algorithm_name == "PPO":
+                hyperparams["gae_lambda"] = getattr(m, "gae_lambda", None)
+                hyperparams["clip_range"] = getattr(m, "clip_range", None)
+                hyperparams["vf_coef"] = getattr(m, "vf_coef", None)
+                hyperparams["max_grad_norm"] = getattr(m, "max_grad_norm", None)
+                hyperparams["n_steps"] = getattr(m, "n_steps", None)
+            elif self._algorithm_name == "DQN":
+                hyperparams["learning_starts"] = getattr(m, "learning_starts", None)
+                hyperparams["buffer_size"] = getattr(m, "buffer_size", None)
+                hyperparams["target_update_interval"] = getattr(m, "target_update_interval", None)
+                hyperparams["train_freq"] = str(getattr(m, "train_freq", None))
+        
+        self._agent_info["model_hyperparameters"] = hyperparams
 
     def set_training_time(self, start, end, total_timesteps):
         self._training_start_time = start
@@ -71,6 +110,9 @@ class TrainingMetricsLogger:
             "vehicle_count": info.get("vehicle_count", 0),
             "episode_throughput": info.get("episode_throughput", 0),
             "episode_reward": round(info.get("episode_reward", 0), 4),
+            "avg_speed_kmh": round(info.get("avg_speed_kmh", 0), 2),
+            "avg_queue_length": round(info.get("avg_queue_length", 0), 2),
+            "reward_components": {k: float(v) for k, v in info.get("episode_reward_components", {}).items()}
         }
         self.training_episodes.append(record)
         # Auto-save every 5 training episodes to avoid data loss
@@ -89,6 +131,9 @@ class TrainingMetricsLogger:
             "vehicle_count": info.get("vehicle_count", 0),
             "episode_throughput": info.get("episode_throughput", 0),
             "episode_reward": round(info.get("episode_reward", 0), 4),
+            "avg_speed_kmh": round(info.get("avg_speed_kmh", 0), 2),
+            "avg_queue_length": round(info.get("avg_queue_length", 0), 2),
+            "reward_components": {k: float(v) for k, v in info.get("episode_reward_components", {}).items()}
         }
         self.evaluation_episodes.append(record)
         self._save()
@@ -139,13 +184,50 @@ class TrainingMetricsLogger:
                         "yellow_time": AIConfig.YELLOW_TIME,
                         "max_episode_steps": AIConfig.MAX_EPISODE_STEPS,
                     },
+                    "agent_info": self._agent_info,
                     "training_summary": training_summary,
                     "evaluation_summary": eval_summary,
                     "training_episodes": self.training_episodes,
                     "evaluation_episodes": self.evaluation_episodes,
                 }, f, indent=2, ensure_ascii=False)
+                
+            # Save CSV files for easy reporting
+            if self.training_episodes:
+                csv_path = self.output_path.replace(".json", "_train.csv")
+                self._save_csv(self.training_episodes, csv_path)
+            if self.evaluation_episodes:
+                csv_path = self.output_path.replace(".json", "_eval.csv")
+                self._save_csv(self.evaluation_episodes, csv_path)
+
         except Exception as e:
             print(f"  ⚠ Failed to save metrics: {e}")
+
+    def _save_csv(self, episodes, filepath):
+        if not episodes: return
+        with open(filepath, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f)
+            # Find all possible reward components across all episodes
+            reward_keys = set()
+            for ep in episodes:
+                reward_keys.update(ep.get("reward_components", {}).keys())
+            reward_keys = sorted(list(reward_keys))
+            
+            headers = ["episode", "phase", "steps", "total_waiting_time", 
+                       "vehicle_count", "episode_throughput", "episode_reward", 
+                       "avg_speed_kmh", "avg_queue_length"] + [f"reward_{k}" for k in reward_keys]
+            writer.writerow(headers)
+            
+            for ep in episodes:
+                row = [
+                    ep.get("episode"), ep.get("phase"), ep.get("steps"), 
+                    ep.get("total_waiting_time"), ep.get("vehicle_count"),
+                    ep.get("episode_throughput"), ep.get("episode_reward"),
+                    ep.get("avg_speed_kmh"), ep.get("avg_queue_length")
+                ]
+                comps = ep.get("reward_components", {})
+                for k in reward_keys:
+                    row.append(round(comps.get(k, 0.0), 4))
+                writer.writerow(row)
 
     @staticmethod
     def _compute_summary(episodes):
@@ -157,6 +239,9 @@ class TrainingMetricsLogger:
         n = min(10, len(episodes))
         first_n_rewards = [ep["episode_reward"] for ep in episodes[:n]]
         last_n_rewards = [ep["episode_reward"] for ep in episodes[-n:]]
+        
+        speeds = [ep.get("avg_speed_kmh", 0) for ep in episodes]
+        queues = [ep.get("avg_queue_length", 0) for ep in episodes]
 
         improvement_pct = None
         avg_first = sum(first_n_rewards) / len(first_n_rewards)
@@ -174,6 +259,8 @@ class TrainingMetricsLogger:
             "reward_improvement_pct": improvement_pct,
             "avg_throughput": round(sum(throughputs) / len(throughputs), 1),
             "avg_waiting_time": round(sum(waits) / len(waits), 1),
+            "avg_speed_kmh": round(sum(speeds) / max(1, len(speeds)), 2),
+            "avg_queue_length": round(sum(queues) / max(1, len(queues)), 2),
             "best_throughput": max(throughputs),
             "worst_waiting_time": round(max(waits), 1),
         }
@@ -371,10 +458,13 @@ def main():
     print(f"  Episode length:  {AIConfig.MAX_EPISODE_STEPS} steps ({AIConfig.MAX_EPISODE_STEPS//60} min)")
     print(f"  Reward weights:  {AIConfig.REWARD_WEIGHTS}")
     print(f"{'='*60}\n")
-
+    
     t_start = time.time()
     success = agent.train(total_timesteps=args.timesteps, callback=callback)
     t_elapsed = time.time() - t_start
+
+    # Capture agent info AFTER training so model hyperparams are available
+    metrics_logger.set_agent_info(agent, env)
 
     metrics_logger.set_training_time(t_start, time.time(), args.timesteps)
 
