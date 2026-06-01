@@ -1,32 +1,174 @@
 {
-    "FIXED_TIME": {
-        "junction_count": 10,
-        "avg_wait_time": 97028.0,
-        "avg_throughput": 5569.0,
-        "avg_reward": 213.1811555555556
-    },
-    "RULE_BASED": {
-        "junction_count": 10,
-        "avg_wait_time": 94129.0,
-        "avg_throughput": 5721.0,
-        "avg_reward": 238.57192063492053
-    },
-    "PPO": {
-        "junction_count": 10,
-        "avg_wait_time": 86946.0,
-        "avg_throughput": 5392.0,
-        "avg_reward": 239.31530158730172
-    },
-    "DQN": {
-        "junction_count": 10,
-        "avg_wait_time": 110623.0,
-        "avg_throughput": 6534.0,
-        "avg_reward": 279.5315746031749
-    },
-    "A2C": {
-        "junction_count": 10,
-        "avg_wait_time": 95076.0,
-        "avg_throughput": 6678.0,
-        "avg_reward": 302.9582984126985
+    "timestamp": "2026-05-31T02:05:17.203707",
+    "episodes_per_model": 3,
+    "results": {
+        "FIXED_TIME": {
+            "junction_count": 10,
+            "episodes_run": 3,
+            "metrics": {
+                "wait_time": {
+                    "mean": 203126.0,
+                    "std": 0.0,
+                    "min": 203126.0,
+                    "max": 203126.0,
+                    "improvement_pct": 0.0
+                },
+                "throughput": {
+                    "mean": 11904.0,
+                    "std": 0.0,
+                    "min": 11904.0,
+                    "max": 11904.0
+                },
+                "reward": {
+                    "mean": 138.73149696969702,
+                    "std": 0.0,
+                    "min": 138.73149696969702,
+                    "max": 138.73149696969702,
+                    "improvement_pct": 0.0
+                },
+                "speed_kmh": {
+                    "mean": 5.230090100883523,
+                    "std": 0.0
+                },
+                "queue_length": {
+                    "mean": 0.5476454293628809,
+                    "std": 0.0
+                }
+            },
+            "episodes": [
+                {
+                    "episode": 1,
+                    "wait_time": 203126.0,
+                    "throughput": 11904,
+                    "reward": 138.73149696969702,
+                    "avg_speed_kmh": 5.230090100883523,
+                    "avg_queue_length": 0.5476454293628809,
+                    "reward_components": {
+                        "waiting_time": -93.08533333333358,
+                        "throughput": 300.5,
+                        "avg_speed": 90.2999999999995,
+                        "queue_length": -1.1862000000000004,
+                        "phase_switch": -14.499999999999968,
+                        "emergency_penalty": -143.29696969696968
+                    }
+                },
+                {
+                    "episode": 2,
+                    "wait_time": 203126.0,
+                    "throughput": 11904,
+                    "reward": 138.73149696969702,
+                    "avg_speed_kmh": 5.230090100883523,
+                    "avg_queue_length": 0.5476454293628809,
+                    "reward_components": {
+                        "waiting_time": -93.08533333333358,
+                        "throughput": 300.5,
+                        "avg_speed": 90.2999999999995,
+                        "queue_length": -1.1862000000000004,
+                        "phase_switch": -14.499999999999968,
+                        "emergency_penalty": -143.29696969696968
+                    }
+                },
+                {
+                    "episode": 3,
+                    "wait_time": 203126.0,
+                    "throughput": 11904,
+                    "reward": 138.73149696969702,
+                    "avg_speed_kmh": 5.230090100883523,
+                    "avg_queue_length": 0.5476454293628809,
+                    "reward_components": {
+                        "waiting_time": -93.08533333333358,
+                        "throughput": 300.5,
+                        "avg_speed": 90.2999999999995,
+                        "queue_length": -1.1862000000000004,
+                        "phase_switch": -14.499999999999968,
+                        "emergency_penalty": -143.29696969696968
+                    }
+                }
+            ]
+        },
+        "RULE_BASED": {
+            "junction_count": 10,
+            "episodes_run": 3,
+            "metrics": {
+                "wait_time": {
+                    "mean": 171386.0,
+                    "std": 0.0,
+                    "min": 171386.0,
+                    "max": 171386.0,
+                    "improvement_pct": 15.625769226982268
+                },
+                "throughput": {
+                    "mean": 11873.0,
+                    "std": 0.0,
+                    "min": 11873.0,
+                    "max": 11873.0
+                },
+                "reward": {
+                    "mean": 139.5549160173159,
+                    "std": 0.0,
+                    "min": 139.5549160173159,
+                    "max": 139.5549160173159,
+                    "improvement_pct": 0.5935343203272208
+                },
+                "speed_kmh": {
+                    "mean": 5.166367604689799,
+                    "std": 0.0
+                },
+                "queue_length": {
+                    "mean": 0.5283018867924528,
+                    "std": 0.0
+                }
+            },
+            "episodes": [
+                {
+                    "episode": 1,
+                    "wait_time": 171386.0,
+                    "throughput": 11873,
+                    "reward": 139.5549160173159,
+                    "avg_speed_kmh": 5.166367604689799,
+                    "avg_queue_length": 0.5283018867924528,
+                    "reward_components": {
+                        "waiting_time": -91.0266666666669,
+                        "throughput": 297.5,
+                        "avg_speed": 89.39999999999951,
+                        "queue_length": -1.1424,
+                        "phase_switch": -3.5099999999999865,
+                        "emergency_penalty": -151.6660173160173
+                    }
+                },
+                {
+                    "episode": 2,
+                    "wait_time": 171386.0,
+                    "throughput": 11873,
+                    "reward": 139.5549160173159,
+                    "avg_speed_kmh": 5.166367604689799,
+                    "avg_queue_length": 0.5283018867924528,
+                    "reward_components": {
+                        "waiting_time": -91.0266666666669,
+                        "throughput": 297.5,
+                        "avg_speed": 89.39999999999951,
+                        "queue_length": -1.1424,
+                        "phase_switch": -3.5099999999999865,
+                        "emergency_penalty": -151.6660173160173
+                    }
+                },
+                {
+                    "episode": 3,
+                    "wait_time": 171386.0,
+                    "throughput": 11873,
+                    "reward": 139.5549160173159,
+                    "avg_speed_kmh": 5.166367604689799,
+                    "avg_queue_length": 0.5283018867924528,
+                    "reward_components": {
+                        "waiting_time": -91.0266666666669,
+                        "throughput": 297.5,
+                        "avg_speed": 89.39999999999951,
+                        "queue_length": -1.1424,
+                        "phase_switch": -3.5099999999999865,
+                        "emergency_penalty": -151.6660173160173
+                    }
+                }
+            ]
+        }
     }
 }

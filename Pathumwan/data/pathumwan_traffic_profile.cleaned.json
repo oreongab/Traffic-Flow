@@ -1,0 +1,967 @@
+{
+  "description": "Pathumwan traffic — otp_66_05.csv (2022) + opendata-jan_ok.xlsx (2023)",
+  "bounding_box": {
+    "min_lat": 13.72,
+    "max_lat": 13.76,
+    "min_lng": 100.51,
+    "max_lng": 100.56
+  },
+  "vehicle_proportions": {
+    "passenger": 0.706,
+    "van": 0.237,
+    "bus": 0.02,
+    "truck": 0.01,
+    "motorcycle": 0.027
+  },
+  "average_hourly_profile": {
+    "5": {
+      "volume_avg": 330.0,
+      "speed_avg": 39.0,
+      "density_avg": 46.8,
+      "vc_avg": 0.12,
+      "stations": 7
+    },
+    "6": {
+      "volume_avg": 1104.0,
+      "speed_avg": 31.0,
+      "density_avg": 108.5,
+      "vc_avg": 0.34,
+      "stations": 7
+    },
+    "7": {
+      "volume_avg": 1598.0,
+      "speed_avg": 25.1,
+      "density_avg": 145.2,
+      "vc_avg": 0.44,
+      "stations": 7
+    },
+    "8": {
+      "volume_avg": 1768.0,
+      "speed_avg": 26.6,
+      "density_avg": 153.5,
+      "vc_avg": 0.5,
+      "stations": 7
+    },
+    "9": {
+      "volume_avg": 1464.0,
+      "speed_avg": 23.3,
+      "density_avg": 140.2,
+      "vc_avg": 0.41,
+      "stations": 7
+    },
+    "10": {
+      "volume_avg": 1484.0,
+      "speed_avg": 23.7,
+      "density_avg": 134.8,
+      "vc_avg": 0.42,
+      "stations": 7
+    },
+    "11": {
+      "volume_avg": 1625.0,
+      "speed_avg": 23.7,
+      "density_avg": 160.8,
+      "vc_avg": 0.48,
+      "stations": 7
+    },
+    "12": {
+      "volume_avg": 1436.0,
+      "speed_avg": 23.1,
+      "density_avg": 138.9,
+      "vc_avg": 0.4,
+      "stations": 7
+    },
+    "13": {
+      "volume_avg": 1425.0,
+      "speed_avg": 22.7,
+      "density_avg": 139.9,
+      "vc_avg": 0.4,
+      "stations": 7
+    },
+    "14": {
+      "volume_avg": 1436.0,
+      "speed_avg": 22.5,
+      "density_avg": 139.7,
+      "vc_avg": 0.4,
+      "stations": 7
+    },
+    "15": {
+      "volume_avg": 1467.0,
+      "speed_avg": 24.7,
+      "density_avg": 139.8,
+      "vc_avg": 0.41,
+      "stations": 7
+    },
+    "16": {
+      "volume_avg": 1488.0,
+      "speed_avg": 25.7,
+      "density_avg": 162.6,
+      "vc_avg": 0.45,
+      "stations": 7
+    },
+    "17": {
+      "volume_avg": 1507.0,
+      "speed_avg": 22.4,
+      "density_avg": 169.8,
+      "vc_avg": 0.46,
+      "stations": 7
+    },
+    "18": {
+      "volume_avg": 1567.0,
+      "speed_avg": 20.4,
+      "density_avg": 180.0,
+      "vc_avg": 0.47,
+      "stations": 7
+    }
+  },
+  "stations": {
+    "TF1-RW-02 ถ.จตุรทิศ-ถ.อโศก-ดินแดง": {
+      "name": "TF1-RW-02 ถ.จตุรทิศ-ถ.อโศก-ดินแดง",
+      "lat": 13.756727,
+      "lng": 100.548484,
+      "hourly": {
+        "5": {
+          "volume_avg": 503,
+          "volume_median": 460,
+          "speed_avg": 26.1,
+          "density_avg": 30.6,
+          "vc_avg": 0.18,
+          "samples": 7
+        },
+        "6": {
+          "volume_avg": 1873,
+          "volume_median": 1484,
+          "speed_avg": 20.4,
+          "density_avg": 111.2,
+          "vc_avg": 0.7,
+          "samples": 5
+        },
+        "7": {
+          "volume_avg": 1290,
+          "volume_median": 1028,
+          "speed_avg": 19.8,
+          "density_avg": 151.2,
+          "vc_avg": 0.48,
+          "samples": 5
+        },
+        "8": {
+          "volume_avg": 2573,
+          "volume_median": 2401,
+          "speed_avg": 17.2,
+          "density_avg": 175.8,
+          "vc_avg": 0.95,
+          "samples": 5
+        },
+        "9": {
+          "volume_avg": 2039,
+          "volume_median": 1711,
+          "speed_avg": 14.3,
+          "density_avg": 138.6,
+          "vc_avg": 0.75,
+          "samples": 7
+        },
+        "10": {
+          "volume_avg": 2033,
+          "volume_median": 1642,
+          "speed_avg": 13.6,
+          "density_avg": 139.0,
+          "vc_avg": 0.75,
+          "samples": 7
+        },
+        "11": {
+          "volume_avg": 2614,
+          "volume_median": 2490,
+          "speed_avg": 17.8,
+          "density_avg": 155.4,
+          "vc_avg": 0.97,
+          "samples": 5
+        },
+        "12": {
+          "volume_avg": 2004,
+          "volume_median": 1717,
+          "speed_avg": 13.3,
+          "density_avg": 137.3,
+          "vc_avg": 0.74,
+          "samples": 7
+        },
+        "13": {
+          "volume_avg": 2011,
+          "volume_median": 1701,
+          "speed_avg": 12.9,
+          "density_avg": 138.4,
+          "vc_avg": 0.75,
+          "samples": 7
+        },
+        "14": {
+          "volume_avg": 2033,
+          "volume_median": 1672,
+          "speed_avg": 13.3,
+          "density_avg": 133.7,
+          "vc_avg": 0.75,
+          "samples": 7
+        },
+        "15": {
+          "volume_avg": 2083,
+          "volume_median": 1710,
+          "speed_avg": 13.7,
+          "density_avg": 136.6,
+          "vc_avg": 0.77,
+          "samples": 7
+        },
+        "16": {
+          "volume_avg": 2963,
+          "volume_median": 2876,
+          "speed_avg": 9.2,
+          "density_avg": 201.4,
+          "vc_avg": 1.1,
+          "samples": 5
+        },
+        "17": {
+          "volume_avg": 3074,
+          "volume_median": 2849,
+          "speed_avg": 7.6,
+          "density_avg": 201.4,
+          "vc_avg": 1.14,
+          "samples": 5
+        },
+        "18": {
+          "volume_avg": 2722,
+          "volume_median": 2731,
+          "speed_avg": 6.6,
+          "density_avg": 202.0,
+          "vc_avg": 1.01,
+          "samples": 5
+        }
+      }
+    },
+    "TF2-PP-S1-01 ถ.กรุงเกษม - ถ. วังเจ้าสาย": {
+      "name": "TF2-PP-S1-01 ถ.กรุงเกษม - ถ. วังเจ้าสาย",
+      "lat": 13.742948,
+      "lng": 100.51573,
+      "hourly": {
+        "5": {
+          "volume_avg": 161,
+          "volume_median": 204,
+          "speed_avg": 68.1,
+          "density_avg": 40.3,
+          "vc_avg": 0.06,
+          "samples": 7
+        },
+        "6": {
+          "volume_avg": 611,
+          "volume_median": 595,
+          "speed_avg": 50.8,
+          "density_avg": 113.2,
+          "vc_avg": 0.23,
+          "samples": 5
+        },
+        "7": {
+          "volume_avg": 592,
+          "volume_median": 445,
+          "speed_avg": 31.8,
+          "density_avg": 187.2,
+          "vc_avg": 0.22,
+          "samples": 5
+        },
+        "8": {
+          "volume_avg": 569,
+          "volume_median": 405,
+          "speed_avg": 38.8,
+          "density_avg": 117.0,
+          "vc_avg": 0.21,
+          "samples": 5
+        },
+        "9": {
+          "volume_avg": 552,
+          "volume_median": 554,
+          "speed_avg": 36.9,
+          "density_avg": 132.3,
+          "vc_avg": 0.2,
+          "samples": 7
+        },
+        "10": {
+          "volume_avg": 525,
+          "volume_median": 517,
+          "speed_avg": 34.7,
+          "density_avg": 133.0,
+          "vc_avg": 0.19,
+          "samples": 7
+        },
+        "11": {
+          "volume_avg": 1067,
+          "volume_median": 1027,
+          "speed_avg": 44.0,
+          "density_avg": 183.8,
+          "vc_avg": 0.39,
+          "samples": 5
+        },
+        "12": {
+          "volume_avg": 533,
+          "volume_median": 562,
+          "speed_avg": 36.9,
+          "density_avg": 132.1,
+          "vc_avg": 0.2,
+          "samples": 7
+        },
+        "13": {
+          "volume_avg": 540,
+          "volume_median": 564,
+          "speed_avg": 34.9,
+          "density_avg": 131.7,
+          "vc_avg": 0.2,
+          "samples": 7
+        },
+        "14": {
+          "volume_avg": 515,
+          "volume_median": 517,
+          "speed_avg": 36.0,
+          "density_avg": 130.4,
+          "vc_avg": 0.19,
+          "samples": 7
+        },
+        "15": {
+          "volume_avg": 513,
+          "volume_median": 547,
+          "speed_avg": 36.1,
+          "density_avg": 132.3,
+          "vc_avg": 0.19,
+          "samples": 7
+        },
+        "16": {
+          "volume_avg": 575,
+          "volume_median": 578,
+          "speed_avg": 41.8,
+          "density_avg": 201.4,
+          "vc_avg": 0.21,
+          "samples": 5
+        },
+        "17": {
+          "volume_avg": 645,
+          "volume_median": 616,
+          "speed_avg": 42.0,
+          "density_avg": 201.6,
+          "vc_avg": 0.24,
+          "samples": 5
+        },
+        "18": {
+          "volume_avg": 553,
+          "volume_median": 533,
+          "speed_avg": 40.0,
+          "density_avg": 201.6,
+          "vc_avg": 0.2,
+          "samples": 5
+        }
+      }
+    },
+    "TF2-PT-S27-02 ถ.พระรามที่ 4 -ถ.บรรทัดทอง": {
+      "name": "TF2-PT-S27-02 ถ.พระรามที่ 4 -ถ.บรรทัดทอง",
+      "lat": 13.735782,
+      "lng": 100.521346,
+      "hourly": {
+        "5": {
+          "volume_avg": 64,
+          "volume_median": 70,
+          "speed_avg": 46.6,
+          "density_avg": 27.0,
+          "vc_avg": 0.02,
+          "samples": 7
+        },
+        "6": {
+          "volume_avg": 193,
+          "volume_median": 225,
+          "speed_avg": 33.0,
+          "density_avg": 85.8,
+          "vc_avg": 0.05,
+          "samples": 5
+        },
+        "7": {
+          "volume_avg": 738,
+          "volume_median": 710,
+          "speed_avg": 44.2,
+          "density_avg": 63.6,
+          "vc_avg": 0.2,
+          "samples": 5
+        },
+        "8": {
+          "volume_avg": 1641,
+          "volume_median": 1619,
+          "speed_avg": 45.0,
+          "density_avg": 127.0,
+          "vc_avg": 0.46,
+          "samples": 5
+        },
+        "9": {
+          "volume_avg": 1404,
+          "volume_median": 1536,
+          "speed_avg": 39.0,
+          "density_avg": 115.6,
+          "vc_avg": 0.39,
+          "samples": 7
+        },
+        "10": {
+          "volume_avg": 1437,
+          "volume_median": 1563,
+          "speed_avg": 38.6,
+          "density_avg": 118.0,
+          "vc_avg": 0.4,
+          "samples": 7
+        },
+        "11": {
+          "volume_avg": 1555,
+          "volume_median": 1574,
+          "speed_avg": 34.6,
+          "density_avg": 154.0,
+          "vc_avg": 0.43,
+          "samples": 5
+        },
+        "12": {
+          "volume_avg": 1329,
+          "volume_median": 1352,
+          "speed_avg": 39.1,
+          "density_avg": 117.4,
+          "vc_avg": 0.37,
+          "samples": 7
+        },
+        "13": {
+          "volume_avg": 1285,
+          "volume_median": 1333,
+          "speed_avg": 39.1,
+          "density_avg": 116.9,
+          "vc_avg": 0.36,
+          "samples": 7
+        },
+        "14": {
+          "volume_avg": 1308,
+          "volume_median": 1382,
+          "speed_avg": 40.1,
+          "density_avg": 117.0,
+          "vc_avg": 0.36,
+          "samples": 7
+        },
+        "15": {
+          "volume_avg": 1333,
+          "volume_median": 1370,
+          "speed_avg": 40.7,
+          "density_avg": 117.9,
+          "vc_avg": 0.37,
+          "samples": 7
+        },
+        "16": {
+          "volume_avg": 1003,
+          "volume_median": 848,
+          "speed_avg": 38.4,
+          "density_avg": 96.6,
+          "vc_avg": 0.28,
+          "samples": 5
+        },
+        "17": {
+          "volume_avg": 1726,
+          "volume_median": 1740,
+          "speed_avg": 37.0,
+          "density_avg": 98.8,
+          "vc_avg": 0.48,
+          "samples": 5
+        },
+        "18": {
+          "volume_avg": 2764,
+          "volume_median": 3683,
+          "speed_avg": 36.2,
+          "density_avg": 169.6,
+          "vc_avg": 0.77,
+          "samples": 5
+        }
+      }
+    },
+    "TF2-PT-S29-04 ถ.พระรามที่ 1 -ถ.ราชดำริ": {
+      "name": "TF2-PT-S29-04 ถ.พระรามที่ 1 -ถ.ราชดำริ",
+      "lat": 13.745203,
+      "lng": 100.535931,
+      "hourly": {
+        "5": {
+          "volume_avg": 27,
+          "volume_median": 27,
+          "speed_avg": 11.3,
+          "density_avg": 101.0,
+          "vc_avg": 0.24,
+          "samples": 4,
+          "_low_sample_interpolated": true,
+          "_volume_corrected": true
+        },
+        "6": {
+          "volume_avg": 81,
+          "volume_median": 81,
+          "speed_avg": 24.15,
+          "density_avg": 68.15,
+          "vc_avg": 0.24,
+          "samples": 3,
+          "_low_sample_interpolated": true,
+          "_volume_corrected": true
+        },
+        "7": {
+          "volume_avg": 348.5,
+          "volume_median": 445,
+          "speed_avg": 12.42,
+          "density_avg": 106.73,
+          "vc_avg": 0.2,
+          "samples": 3,
+          "_low_sample_interpolated": true
+        },
+        "8": {
+          "volume_avg": 279.25,
+          "volume_median": 251,
+          "speed_avg": 10.81,
+          "density_avg": 115.47,
+          "vc_avg": 0.16,
+          "samples": 3,
+          "_low_sample_interpolated": true
+        },
+        "9": {
+          "volume_avg": 210.62,
+          "volume_median": 184,
+          "speed_avg": 9.66,
+          "density_avg": 120.34,
+          "vc_avg": 0.12,
+          "samples": 4,
+          "_low_sample_interpolated": true
+        },
+        "10": {
+          "volume_avg": 338.81,
+          "volume_median": 130,
+          "speed_avg": 15.48,
+          "density_avg": 77.67,
+          "vc_avg": 0.19,
+          "samples": 4,
+          "_low_sample_interpolated": true
+        },
+        "11": {
+          "volume_avg": 257.4,
+          "volume_median": 468,
+          "speed_avg": 11.24,
+          "density_avg": 100.09,
+          "vc_avg": 0.15,
+          "samples": 3,
+          "_low_sample_interpolated": true
+        },
+        "12": {
+          "volume_avg": 234.2,
+          "volume_median": 192,
+          "speed_avg": 9.87,
+          "density_avg": 110.94,
+          "vc_avg": 0.14,
+          "samples": 4,
+          "_low_sample_interpolated": true
+        },
+        "13": {
+          "volume_avg": 207.6,
+          "volume_median": 244,
+          "speed_avg": 9.04,
+          "density_avg": 117.72,
+          "vc_avg": 0.12,
+          "samples": 4,
+          "_low_sample_interpolated": true
+        },
+        "14": {
+          "volume_avg": 203.3,
+          "volume_median": 135,
+          "speed_avg": 8.42,
+          "density_avg": 120.96,
+          "vc_avg": 0.11,
+          "samples": 4,
+          "_low_sample_interpolated": true
+        },
+        "15": {
+          "volume_avg": 368.15,
+          "volume_median": 160,
+          "speed_avg": 17.56,
+          "density_avg": 116.13,
+          "vc_avg": 0.2,
+          "samples": 4,
+          "_low_sample_interpolated": true
+        },
+        "16": {
+          "volume_avg": 388.57,
+          "volume_median": 533,
+          "speed_avg": 25.28,
+          "density_avg": 105.91,
+          "vc_avg": 0.22,
+          "samples": 3,
+          "_low_sample_interpolated": true
+        },
+        "17": {
+          "volume_avg": 328.28,
+          "volume_median": 201,
+          "speed_avg": 18.49,
+          "density_avg": 82.45,
+          "vc_avg": 0.18,
+          "samples": 3,
+          "_low_sample_interpolated": true
+        },
+        "18": {
+          "volume_avg": 328.28,
+          "volume_median": 371,
+          "speed_avg": 18.49,
+          "density_avg": 82.45,
+          "vc_avg": 0.18,
+          "samples": 3,
+          "_low_sample_interpolated": true
+        }
+      }
+    },
+    "TF2-PT-S33-02 ถ.พระรามที่ 1 -ปากซอยรองเมือง 5": {
+      "name": "TF2-PT-S33-02 ถ.พระรามที่ 1 -ปากซอยรองเมือง 5",
+      "lat": 13.747606,
+      "lng": 100.523066,
+      "hourly": {
+        "5": {
+          "volume_avg": 214,
+          "volume_median": 195,
+          "speed_avg": 50.9,
+          "density_avg": 21.0,
+          "vc_avg": 0.06,
+          "samples": 7
+        },
+        "6": {
+          "volume_avg": 559,
+          "volume_median": 522,
+          "speed_avg": 38.8,
+          "density_avg": 51.8,
+          "vc_avg": 0.16,
+          "samples": 5
+        },
+        "7": {
+          "volume_avg": 2041,
+          "volume_median": 2212,
+          "speed_avg": 29.0,
+          "density_avg": 104.6,
+          "vc_avg": 0.57,
+          "samples": 5
+        },
+        "8": {
+          "volume_avg": 1236,
+          "volume_median": 1224,
+          "speed_avg": 36.8,
+          "density_avg": 136.2,
+          "vc_avg": 0.34,
+          "samples": 5
+        },
+        "9": {
+          "volume_avg": 895,
+          "volume_median": 898,
+          "speed_avg": 30.9,
+          "density_avg": 108.1,
+          "vc_avg": 0.25,
+          "samples": 7
+        },
+        "10": {
+          "volume_avg": 849,
+          "volume_median": 826,
+          "speed_avg": 32.0,
+          "density_avg": 108.0,
+          "vc_avg": 0.24,
+          "samples": 7
+        },
+        "11": {
+          "volume_avg": 1607,
+          "volume_median": 1175,
+          "speed_avg": 22.4,
+          "density_avg": 129.0,
+          "vc_avg": 0.45,
+          "samples": 5
+        },
+        "12": {
+          "volume_avg": 813,
+          "volume_median": 717,
+          "speed_avg": 30.9,
+          "density_avg": 107.3,
+          "vc_avg": 0.23,
+          "samples": 7
+        },
+        "13": {
+          "volume_avg": 816,
+          "volume_median": 796,
+          "speed_avg": 30.9,
+          "density_avg": 106.1,
+          "vc_avg": 0.23,
+          "samples": 7
+        },
+        "14": {
+          "volume_avg": 830,
+          "volume_median": 786,
+          "speed_avg": 28.3,
+          "density_avg": 107.3,
+          "vc_avg": 0.23,
+          "samples": 7
+        },
+        "15": {
+          "volume_avg": 825,
+          "volume_median": 764,
+          "speed_avg": 31.0,
+          "density_avg": 108.0,
+          "vc_avg": 0.23,
+          "samples": 7
+        },
+        "16": {
+          "volume_avg": 1715,
+          "volume_median": 2106,
+          "speed_avg": 23.8,
+          "density_avg": 130.2,
+          "vc_avg": 0.48,
+          "samples": 5
+        },
+        "17": {
+          "volume_avg": 2042,
+          "volume_median": 2142,
+          "speed_avg": 15.2,
+          "density_avg": 201.2,
+          "vc_avg": 0.57,
+          "samples": 5
+        },
+        "18": {
+          "volume_avg": 1898,
+          "volume_median": 1897,
+          "speed_avg": 13.4,
+          "density_avg": 201.2,
+          "vc_avg": 0.53,
+          "samples": 5
+        }
+      }
+    },
+    "TF2-ST-SA49-01 ถ.นราธิวาสราชนครินทร์-ถ.สาทรเหนือ": {
+      "name": "TF2-ST-SA49-01 ถ.นราธิวาสราชนครินทร์-ถ.สาทรเหนือ",
+      "lat": 13.721834,
+      "lng": 100.530456,
+      "hourly": {
+        "5": {
+          "volume_avg": 465,
+          "volume_median": 348,
+          "speed_avg": 23.3,
+          "density_avg": 57.1,
+          "vc_avg": 0.1,
+          "samples": 7
+        },
+        "6": {
+          "volume_avg": 1699,
+          "volume_median": 1047,
+          "speed_avg": 16.4,
+          "density_avg": 180.6,
+          "vc_avg": 0.38,
+          "samples": 5
+        },
+        "7": {
+          "volume_avg": 2319,
+          "volume_median": 2526,
+          "speed_avg": 14.2,
+          "density_avg": 201.4,
+          "vc_avg": 0.52,
+          "samples": 5
+        },
+        "8": {
+          "volume_avg": 1848,
+          "volume_median": 1872,
+          "speed_avg": 10.8,
+          "density_avg": 201.4,
+          "vc_avg": 0.41,
+          "samples": 5
+        },
+        "9": {
+          "volume_avg": 1454,
+          "volume_median": 1629,
+          "speed_avg": 9.3,
+          "density_avg": 164.9,
+          "vc_avg": 0.32,
+          "samples": 7
+        },
+        "10": {
+          "volume_avg": 1466,
+          "volume_median": 1689,
+          "speed_avg": 9.4,
+          "density_avg": 166.1,
+          "vc_avg": 0.33,
+          "samples": 7
+        },
+        "11": {
+          "volume_avg": 1991,
+          "volume_median": 1275,
+          "speed_avg": 13.4,
+          "density_avg": 201.6,
+          "vc_avg": 0.44,
+          "samples": 5
+        },
+        "12": {
+          "volume_avg": 1464,
+          "volume_median": 1628,
+          "speed_avg": 9.4,
+          "density_avg": 166.0,
+          "vc_avg": 0.33,
+          "samples": 7
+        },
+        "13": {
+          "volume_avg": 1444,
+          "volume_median": 1631,
+          "speed_avg": 9.7,
+          "density_avg": 166.7,
+          "vc_avg": 0.32,
+          "samples": 7
+        },
+        "14": {
+          "volume_avg": 1487,
+          "volume_median": 1724,
+          "speed_avg": 9.1,
+          "density_avg": 166.9,
+          "vc_avg": 0.33,
+          "samples": 7
+        },
+        "15": {
+          "volume_avg": 1491,
+          "volume_median": 1687,
+          "speed_avg": 10.9,
+          "density_avg": 165.9,
+          "vc_avg": 0.33,
+          "samples": 7
+        },
+        "16": {
+          "volume_avg": 1986,
+          "volume_median": 1533,
+          "speed_avg": 12.0,
+          "density_avg": 201.8,
+          "vc_avg": 0.44,
+          "samples": 5
+        },
+        "17": {
+          "volume_avg": 1322,
+          "volume_median": 1284,
+          "speed_avg": 11.6,
+          "density_avg": 201.4,
+          "vc_avg": 0.29,
+          "samples": 5
+        },
+        "18": {
+          "volume_avg": 930,
+          "volume_median": 922,
+          "speed_avg": 8.8,
+          "density_avg": 201.4,
+          "vc_avg": 0.2,
+          "samples": 5
+        }
+      }
+    },
+    "TF2-ST-SA50-02 ถ.นราธิวาสราชนครินทร์-ถ.สาทรเหนือ": {
+      "name": "TF2-ST-SA50-02 ถ.นราธิวาสราชนครินทร์-ถ.สาทรเหนือ",
+      "lat": 13.721725,
+      "lng": 100.530187,
+      "hourly": {
+        "5": {
+          "volume_avg": 876,
+          "volume_median": 1070,
+          "speed_avg": 46.6,
+          "density_avg": 50.3,
+          "vc_avg": 0.19,
+          "samples": 7
+        },
+        "6": {
+          "volume_avg": 2710,
+          "volume_median": 3245,
+          "speed_avg": 33.4,
+          "density_avg": 148.6,
+          "vc_avg": 0.6,
+          "samples": 7
+        },
+        "7": {
+          "volume_avg": 3854,
+          "volume_median": 3826,
+          "speed_avg": 24.6,
+          "density_avg": 201.8,
+          "vc_avg": 0.86,
+          "samples": 5
+        },
+        "8": {
+          "volume_avg": 4231,
+          "volume_median": 4260,
+          "speed_avg": 27.0,
+          "density_avg": 201.4,
+          "vc_avg": 0.94,
+          "samples": 5
+        },
+        "9": {
+          "volume_avg": 3692,
+          "volume_median": 3910,
+          "speed_avg": 22.7,
+          "density_avg": 201.6,
+          "vc_avg": 0.82,
+          "samples": 7
+        },
+        "10": {
+          "volume_avg": 3739,
+          "volume_median": 3951,
+          "speed_avg": 22.4,
+          "density_avg": 201.7,
+          "vc_avg": 0.83,
+          "samples": 7
+        },
+        "11": {
+          "volume_avg": 2284,
+          "volume_median": 2147,
+          "speed_avg": 22.4,
+          "density_avg": 201.6,
+          "vc_avg": 0.51,
+          "samples": 5
+        },
+        "12": {
+          "volume_avg": 3678,
+          "volume_median": 3862,
+          "speed_avg": 21.9,
+          "density_avg": 201.4,
+          "vc_avg": 0.82,
+          "samples": 7
+        },
+        "13": {
+          "volume_avg": 3674,
+          "volume_median": 3832,
+          "speed_avg": 22.1,
+          "density_avg": 201.9,
+          "vc_avg": 0.82,
+          "samples": 7
+        },
+        "14": {
+          "volume_avg": 3676,
+          "volume_median": 3859,
+          "speed_avg": 22.3,
+          "density_avg": 201.4,
+          "vc_avg": 0.82,
+          "samples": 7
+        },
+        "15": {
+          "volume_avg": 3653,
+          "volume_median": 3825,
+          "speed_avg": 22.7,
+          "density_avg": 201.6,
+          "vc_avg": 0.81,
+          "samples": 7
+        },
+        "16": {
+          "volume_avg": 1784,
+          "volume_median": 1902,
+          "speed_avg": 29.6,
+          "density_avg": 201.2,
+          "vc_avg": 0.4,
+          "samples": 5
+        },
+        "17": {
+          "volume_avg": 1412,
+          "volume_median": 1398,
+          "speed_avg": 25.2,
+          "density_avg": 201.6,
+          "vc_avg": 0.31,
+          "samples": 5
+        },
+        "18": {
+          "volume_avg": 1775,
+          "volume_median": 1951,
+          "speed_avg": 19.2,
+          "density_avg": 202.0,
+          "vc_avg": 0.4,
+          "samples": 5
+        }
+      }
+    }
+  }
+}

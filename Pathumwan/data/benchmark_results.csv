@@ -1,0 +1,3 @@
+﻿Algorithm,Junctions,Episodes,Wait_Mean,Wait_SD,Wait_Min,Wait_Max,Wait_Imp_%,Throughput_Mean,Throughput_SD,Throughput_Min,Throughput_Max,Reward_Mean,Reward_SD,Reward_Min,Reward_Max,Reward_Imp_%,Speed_Mean,Queue_Mean
+FIXED_TIME,10,3,203126.0,0.0,203126.0,203126.0,0.0,11904.0,0.0,11904.0,11904.0,138.7315,0.0,138.7315,138.7315,0.0,5.23,0.55
+RULE_BASED,10,3,171386.0,0.0,171386.0,171386.0,15.63,11873.0,0.0,11873.0,11873.0,139.5549,0.0,139.5549,139.5549,0.59,5.17,0.53
