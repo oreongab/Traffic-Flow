@@ -1,6 +1,6 @@
 {
-  "dataset": "C:\\Users\\Pattama\\OneDrive\\Documents\\GitHub\\Traffic-Flow\\Pathumwan\\data\\Dataset.csv",
-  "net": "C:\\Users\\Pattama\\OneDrive\\Documents\\GitHub\\Traffic-Flow\\Pathumwan\\osm.net.xml",
+  "dataset": "C:\\Users\\Pattama\\OneDrive\\Documents\\GitHub\\Traffic-Flow\\dataset_packs\\01_data_67_100pct\\Pathumwan\\data\\Dataset.csv",
+  "net": "c:\\Users\\Pattama\\OneDrive\\Documents\\GitHub\\Traffic-Flow\\Pathumwan\\osm.net.xml",
   "seed": 42,
   "aliases": {
     "edge_phayathai_in": {
