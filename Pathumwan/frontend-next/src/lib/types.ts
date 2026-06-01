@@ -35,6 +35,16 @@ export interface TrafficIndexData {
   roads: TrafficIndexRoad[];
   timestamp: string;
   source?: string;
+  source_label?: string;
+  research_note?: string;
+  provenance_summary?: Record<string, number>;
+  scope?: {
+    monitored_road_count?: number;
+    ai_junction_count?: number;
+    pathumwan_ai_junction_count?: number;
+    ratchathewi_feeder_junction_count?: number;
+    note?: string;
+  };
   freshness_seconds?: number;
   // True when at least one road actually has live data; false means the
   // backend has nothing to report yet (e.g. SUMO not running, no detections).
@@ -50,6 +60,9 @@ export interface TrafficIndexRoad {
   vehicle_count?: number;
   detected_vehicle_count?: number;
   source?: string;
+  source_label?: string;
+  metric_source?: string;
+  is_fallback?: boolean;
   timestamp?: string;
 }
 
@@ -66,6 +79,18 @@ export interface RoadDensity {
   detected_vehicle_count?: number;
   timestamp?: string;
   source?: string;
+  source_label?: string;
+  metric_source?: string;
+  is_fallback?: boolean;
+  research_note?: string;
+  provenance_summary?: Record<string, number>;
+  scope?: {
+    monitored_road_count?: number;
+    ai_junction_count?: number;
+    pathumwan_ai_junction_count?: number;
+    ratchathewi_feeder_junction_count?: number;
+    note?: string;
+  };
   freshness_seconds?: number;
   has_data?: boolean;
 }
@@ -97,6 +122,8 @@ export interface Camera {
   sumo_tls_id?: string;
   stream_status?: string;
   freshness_seconds?: number;
+  research_target?: boolean;
+  research_order?: number;
 }
 
 export interface CameraCounts {
@@ -229,20 +256,62 @@ export interface SimStatus {
 export interface AIDecision {
   junction_id: string;
   phase: number;
-  score: number;
-  cars: number;
-  cameras: number;
-  timestamp: number;
+  score?: number;
+  cars?: number;
+  cameras?: number;
+  timestamp: number | string;
+  algorithm?: string;
+  method?: string;
+  current_phase?: number;
+  queue_length?: number;
+  waiting_time?: number;
+  avg_speed_kmh?: number;
+  applied?: boolean;
+  error?: string;
+}
+
+export interface AIAlgorithmOption {
+  id: string;
+  label: string;
+  model_available: boolean;
+}
+
+export interface AIDecisionHistoryEntry {
+  id: number;
+  junction_id: string;
+  timestamp?: string | null;
+  reward: number;
+  model_version: string;
+  input_data: Record<string, unknown>;
+  output: Record<string, unknown>;
+}
+
+export interface SystemLogEntry {
+  timestamp: string;
+  message: string;
+  level: string;
 }
 
 export interface AIStatus {
   mode: "ai" | "manual";
   active: boolean;
   decisions: number;
+  algorithm?: string;
   ai_mode?: boolean;
   simulation_active?: boolean;
+  runtime_ready?: boolean;
   step?: number;
   camera_count?: number;
+  research_junction_count?: number;
+  pathumwan_research_junction_count?: number;
+  ratchathewi_feeder_junction_count?: number;
+  backends?: {
+    system_mode?: string;
+    signal_backend?: string;
+    camera_backend?: string;
+    ai_backend?: string;
+    signal_mode?: string;
+  };
   last_decisions?: AIDecision[];
 }
 

@@ -122,6 +122,7 @@ export default function MapView({
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [lights, setLights] = useState<TrafficLight[]>([]);
   const [cameras, setCameras] = useState<Camera[]>([]);
+  const [openCameraPopups, setOpenCameraPopups] = useState<Record<string, boolean>>({});
 
   // Vehicles + lights move in real time — refresh fast.
   useEffect(() => {
@@ -166,7 +167,7 @@ export default function MapView({
     }
 
     void refreshCameras();
-    const interval = setInterval(() => void refreshCameras(), 60000);
+    const interval = setInterval(() => void refreshCameras(), 10000);
     return () => {
       active = false;
       clearInterval(interval);
@@ -233,6 +234,12 @@ export default function MapView({
             click: () => {
               onCameraClick?.(c);
             },
+            popupopen: () => {
+              setOpenCameraPopups((prev) => ({ ...prev, [c.camera_id]: true }));
+            },
+            popupclose: () => {
+              setOpenCameraPopups((prev) => ({ ...prev, [c.camera_id]: false }));
+            },
           }}
         >
           <Popup maxWidth={420} minWidth={380}>
@@ -243,14 +250,26 @@ export default function MapView({
               </div>
 
               {cameraPopup === "stream" && (
-                <div className="w-full overflow-hidden rounded-lg border border-gray-200 bg-slate-950" style={{ height: 200 }}>
-                  <CctvFeed
-                    cameraId={c.camera_id}
-                    cameraName={cameraPrimaryLabel(c)}
-                    subtitle={cameraSecondaryLabel(c) || undefined}
-                    cameraLat={c.lat}
-                    cameraLng={c.lng}
-                  />
+                <div className="w-full overflow-hidden rounded-lg border border-gray-200 bg-slate-950" style={{ height: 260 }}>
+                  {openCameraPopups[c.camera_id] ? (
+                    <CctvFeed
+                      cameraId={c.camera_id}
+                      cameraName={cameraPrimaryLabel(c)}
+                      subtitle={cameraSecondaryLabel(c) || undefined}
+                      detectMode={true}
+                      cameraLat={c.lat}
+                      cameraLng={c.lng}
+                      showCounts={false}
+                      showMiniMap={true}
+                      streamFps={3}
+                      streamMode="analytics"
+                      showInfoOverlay={false}
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-3 text-center text-[11px] text-slate-300">
+                      เปิดหน้าต่างกล้องเพื่อเริ่มสตรีม
+                    </div>
+                  )}
                 </div>
               )}
 
