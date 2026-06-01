@@ -48,10 +48,15 @@ def api_register():
     email = data.get("email", "").strip()
     password = data.get("password", "")
 
-    success, message, token = register_user(username, email, password)
+    success, message, token, user_info = register_user(username, email, password)
     if success:
-        return jsonify({"success": True, "message": message, "token": token}), 201
-    return jsonify({"success": False, "message": message}), 400
+        return jsonify({
+            "success": True,
+            "message": message,
+            "token": token,
+            "user": user_info,
+        }), 201
+    return jsonify({"success": False, "message": message, "error": message}), 400
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -63,7 +68,7 @@ def api_login():
     success, message, token, user_info = login_user(username_or_email, password)
     if success:
         return jsonify({"success": True, "message": message, "token": token, "user": user_info})
-    return jsonify({"success": False, "message": message}), 401
+    return jsonify({"success": False, "message": message, "error": message}), 401
 
 
 @auth_bp.route("/reset-password", methods=["POST"])
@@ -74,7 +79,10 @@ def api_reset_password():
 
     success, message = reset_password(username_or_email, new_password)
     status = 200 if success else 400
-    return jsonify({"success": success, "message": message}), status
+    payload = {"success": success, "message": message}
+    if not success:
+        payload["error"] = message
+    return jsonify(payload), status
 
 
 @auth_bp.route("/me", methods=["GET"])

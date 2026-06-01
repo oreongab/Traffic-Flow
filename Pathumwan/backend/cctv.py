@@ -11,7 +11,7 @@ import json
 import math
 import hashlib
 import re
-from utils import sumo_xy_to_latlng
+from utils import latlng_to_sumo_xy, sumo_xy_to_latlng
 from config import Config
 
 # Pathumwan district bounding box. Anything outside this box is a TLS the OSM
@@ -34,6 +34,7 @@ def is_in_pathumwan(lat: float, lng: float) -> bool:
 
 # Load camera definitions from pathumwan_roads.json
 _CAMERA_DEFS = []
+_RESEARCH_TARGETS_BY_JUNCTION = {}
 try:
     _roads_path = os.path.join(Config.PROJECT_ROOT, "data", "pathumwan_roads.json")
     with open(_roads_path, encoding="utf-8") as f:
@@ -42,6 +43,13 @@ try:
         cam for cam in _road_data.get("cameras", [])
         if str(cam.get("status", "active")).lower() == "active"
     ]
+    _RESEARCH_TARGETS_BY_JUNCTION = {
+        str(target.get("junction_id") or "").strip(): target
+        for target in _road_data.get("research_targets", [])
+        if isinstance(target, dict)
+        and str(target.get("junction_id") or "").strip()
+        and str(target.get("camera_id") or "").strip()
+    }
 except Exception:
     pass
 
@@ -129,6 +137,63 @@ def _find_matching_camera_def(lat, lng, used_ids, max_dist_km=0.18):
     return best
 
 
+def _project_point_to_segment(px, py, ax, ay, bx, by):
+    seg_len_sq = (bx - ax) ** 2 + (by - ay) ** 2
+    if seg_len_sq <= 1e-9:
+        return ax, ay, math.hypot(px - ax, py - ay)
+
+    t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / seg_len_sq
+    t = max(0.0, min(1.0, t))
+    sx = ax + t * (bx - ax)
+    sy = ay + t * (by - ay)
+    return sx, sy, math.hypot(px - sx, py - sy)
+
+
+def _nearest_lane_point(traci_module, x, y, max_dist_m=90.0):
+    """Snap a camera anchor to the closest drivable lane point.
+
+    Camera definitions are stored as WGS84 lat/lng for map display, while the
+    synthetic CCTV renderer reads SUMO XY.  Snapping keeps the rendered stream
+    and live vehicle counts centered on the same visible road segment instead
+    of the traffic-light centroid or a stale DB coordinate.
+    """
+    best = None
+    best_dist = float(max_dist_m)
+    try:
+        lane_ids = traci_module.lane.getIDList()
+    except Exception:
+        lane_ids = []
+
+    for lane_id in lane_ids:
+        if str(lane_id).startswith(":"):
+            continue
+        try:
+            shape = traci_module.lane.getShape(lane_id)
+        except Exception:
+            continue
+        if not shape or len(shape) < 2:
+            continue
+        for (ax, ay), (bx, by) in zip(shape[:-1], shape[1:]):
+            sx, sy, dist = _project_point_to_segment(float(x), float(y), float(ax), float(ay), float(bx), float(by))
+            if dist < best_dist:
+                best = (sx, sy)
+                best_dist = dist
+
+    return best
+
+
+def _camera_render_xy(traci_module, lat, lng, fallback_x, fallback_y):
+    try:
+        anchor_x, anchor_y = latlng_to_sumo_xy(float(lat), float(lng))
+    except Exception:
+        return fallback_x, fallback_y, False
+
+    snapped = _nearest_lane_point(traci_module, anchor_x, anchor_y)
+    if snapped is None:
+        return fallback_x, fallback_y, False
+    return snapped[0], snapped[1], True
+
+
 def _get_tls_points(traci_module):
     """Collect traffic light centers so cameras can snap to real junctions."""
     points = []
@@ -136,6 +201,11 @@ def _get_tls_points(traci_module):
         tls_ids = traci_module.trafficlight.getIDList()
     except Exception:
         return points
+
+    try:
+        known_junction_ids = {str(jid) for jid in traci_module.junction.getIDList()}
+    except Exception:
+        known_junction_ids = set()
 
     for tid in tls_ids:
         try:
@@ -148,6 +218,8 @@ def _get_tls_points(traci_module):
             if junctions:
                 coords = []
                 for jid in junctions:
+                    if known_junction_ids and str(jid) not in known_junction_ids:
+                        continue
                     try:
                         jx, jy = traci_module.junction.getPosition(jid)
                         coords.append((float(jx), float(jy)))
@@ -157,7 +229,7 @@ def _get_tls_points(traci_module):
                     x = sum(px for px, _ in coords) / len(coords)
                     y = sum(py for _, py in coords) / len(coords)
 
-            if x is None or y is None:
+            if (x is None or y is None) and ((not known_junction_ids) or str(tid) in known_junction_ids):
                 x, y = traci_module.junction.getPosition(tid)
 
             if x is None or y is None:
@@ -189,35 +261,65 @@ def collect_cameras(traci_module):
                 continue
             sumo_tls_id = str(tls.get("tid") or "")
             street_names = tls.get("street_names") or []
+            research_target = _RESEARCH_TARGETS_BY_JUNCTION.get(sumo_tls_id)
 
-            matched_def = _find_matching_camera_def(lat, lng, used_defined_ids)
-            if matched_def is not None:
-                cam_id = str(matched_def.get("id") or "").strip()
+            if research_target is not None:
+                cam_id = str(research_target.get("camera_id") or "").strip()
                 used_defined_ids.add(cam_id)
-                cam_name = matched_def.get("name", cam_id)
-                cam_road = matched_def.get("road", street_names[0] if street_names else "")
-                cam_junction = matched_def.get("junction", " / ".join(street_names[:2]))
-                lat = float(matched_def.get("lat", lat))
-                lng = float(matched_def.get("lng", lng))
+                cam_name = (
+                    research_target.get("camera_label_th")
+                    or research_target.get("label_th")
+                    or cam_id
+                )
+                cam_road = research_target.get("road", street_names[0] if street_names else "")
+                cam_junction = (
+                    research_target.get("junction_slug")
+                    or research_target.get("label_th")
+                    or " / ".join(street_names[:2])
+                )
+                lat = float(research_target.get("lat", lat) or lat)
+                lng = float(research_target.get("lng", lng) or lng)
             else:
+                matched_def = _find_matching_camera_def(lat, lng, used_defined_ids)
+                if matched_def is not None:
+                    cam_id = str(matched_def.get("id") or "").strip()
+                    used_defined_ids.add(cam_id)
+                    cam_name = matched_def.get("name", cam_id)
+                    cam_road = matched_def.get("road", street_names[0] if street_names else "")
+                    cam_junction = matched_def.get("junction", " / ".join(street_names[:2]))
+                    lat = float(matched_def.get("lat", lat))
+                    lng = float(matched_def.get("lng", lng))
+                else:
+                    fallback = _build_fallback_camera_label(street_names, sumo_tls_id, idx)
+                    cam_id = fallback["camera_id"]
+                    cam_name = fallback["name"]
+                    cam_road = fallback["road"]
+                    cam_junction = fallback["junction"]
+
+            if not cam_id:
                 fallback = _build_fallback_camera_label(street_names, sumo_tls_id, idx)
                 cam_id = fallback["camera_id"]
                 cam_name = fallback["name"]
                 cam_road = fallback["road"]
                 cam_junction = fallback["junction"]
 
+            render_x, render_y, snapped_to_lane = _camera_render_xy(traci_module, lat, lng, x, y)
+
             cams.append({
                 "id": idx + 1,
                 "camera_id": cam_id,
                 "name": cam_name,
                 "road": cam_road,
-                "x": x,
-                "y": y,
+                "x": render_x,
+                "y": render_y,
+                "tls_x": x,
+                "tls_y": y,
                 "lat": lat,
                 "lng": lng,
                 "junction": cam_junction,
                 "street_names": street_names,
                 "sumo_tls_id": sumo_tls_id,
+                "snapped_to_lane": snapped_to_lane,
             })
         except Exception:
             continue

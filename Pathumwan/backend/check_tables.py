@@ -2,8 +2,8 @@
 from database.models import (
     User, Camera, Road, Junction, Approach,
     TrafficDetection, TrafficIndex, RoadDensity,
-    SignalTiming, SignalController, SignalState,
-    AIDecision, HistoricalStats, SystemLog,
+    SignalController, SignalState,
+    AIDecision, HistoricalStats,
     HourlyVehicleCount, RuntimeConfig,
 )
 from database.connection import get_session
@@ -20,12 +20,10 @@ def check():
         (TrafficDetection, "traffic_detections"),
         (TrafficIndex, "traffic_index"),
         (RoadDensity, "road_density"),
-        (SignalTiming, "signal_timings"),
         (SignalController, "signal_controllers"),
         (SignalState, "signal_states"),
         (AIDecision, "ai_decisions"),
         (HistoricalStats, "historical_stats"),
-        (SystemLog, "system_logs"),
         (HourlyVehicleCount, "hourly_vehicle_counts"),
         (RuntimeConfig, "runtime_config"),
     ]

@@ -141,6 +141,10 @@ def calculate_area_index(road_data_list):
             "travel_time": round(rd.get("travel_time", 0.0), 1),
             "level": level,
             "color": get_congestion_color(idx),
+            "source": rd.get("source", "unknown"),
+            "metric_source": rd.get("metric_source", ""),
+            "source_label": rd.get("source_label", ""),
+            "is_fallback": bool(rd.get("is_fallback", False)),
         })
 
     area_index = round(weighted_sum / max(1, total_weight), 1) if total_weight > 0 else 0.0

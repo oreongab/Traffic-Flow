@@ -70,7 +70,7 @@ def _get_edge_metric_cache() -> dict[str, dict[str, float]]:
         return _edge_metric_cache
 
     cache: dict[str, dict[str, float]] = {}
-    net_path = os.path.join(Config.PROJECT_ROOT, "osm.net.xml")
+    net_path = Config.SUMO_NET_FILE
     try:
         import sumolib
 
@@ -227,10 +227,26 @@ def get_detection_counts_by_road():
     """Group the latest YOLO detections by road using conservative max counts.
 
     Summing multiple cameras on the same road can double count the same vehicle,
-    so we keep the maximum detected volume per road.
+    so we keep the maximum detected volume per road.  Runtime-generated camera
+    IDs may not exist in the DB when camera sync is blocked by FK constraints,
+    so we also map them from ``simulation.camera_points``.
     """
     detection_rows = compute_density_from_detection()
     camera_road_map = get_camera_road_map()
+
+    try:
+        import simulation
+        for cam in getattr(simulation, "camera_points", []) or []:
+            road_id = str(cam.get("road") or "")
+            if not road_id:
+                continue
+            for alias in (cam.get("camera_id"), cam.get("id"), cam.get("sumo_tls_id")):
+                alias_str = str(alias or "").strip()
+                if alias_str:
+                    camera_road_map.setdefault(alias_str, road_id)
+    except Exception:
+        pass
+
     detection_by_road = {}
 
     for det in detection_rows:
