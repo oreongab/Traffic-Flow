@@ -23,4 +23,5 @@ Thumbs.db
 frontend-next/node_modules/
 
 
+*.zip
 Pathumwan/backend/ai/models/

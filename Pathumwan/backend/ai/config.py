@@ -2,10 +2,12 @@
 AI/RL Configuration for Traffic Signal Optimization
 """
 
+from config import Config
+
 
 class AIConfig:
     # Reinforcement Learning
-    ALGORITHM = "PPO"  # PPO or DQN
+    ALGORITHM = Config.AI_ALGORITHM  # PPO or DQN
     LEARNING_RATE = 3e-4
     GAMMA = 0.99           # Discount factor
     GAE_LAMBDA = 0.95      # GAE parameter

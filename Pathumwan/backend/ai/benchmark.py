@@ -10,6 +10,8 @@ from ai.config import AIConfig
 from ai.agent import TrafficAgent
 from ai.environment import SumoTrafficEnv
 from ai.trainer import _build_sumo_cmd
+from config import Config
+from services.mapping import get_research_junction_ids
 
 PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
@@ -26,6 +28,12 @@ def _discover_junctions(sumo_cmd, max_junctions=10):
         traci.start(sumo_cmd, label="benchmark_init")
 
     all_tls = list(traci.trafficlight.getIDList())
+    research_junctions = [junction_id for junction_id in get_research_junction_ids() if junction_id in set(all_tls)]
+    if research_junctions:
+        traci.close()
+        time.sleep(1)
+        return research_junctions[:max_junctions]
+
     valid_junctions = []
     for tls_id in all_tls:
         try:
@@ -57,7 +65,7 @@ def main():
 
     print(f"Models found to benchmark: {available_models}")
 
-    sumo_cfg = os.path.join(PROJECT_ROOT, "osm.sumocfg")
+    sumo_cfg = Config.SUMO_CFG_FILE
     if not os.path.exists(sumo_cfg):
         print(f"❌ SUMO config not found at: {sumo_cfg}")
         return

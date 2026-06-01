@@ -20,6 +20,14 @@ class TrafficPredictor:
 
     def load_model(self):
         """Attempt to load a trained model."""
+        meta = TrafficAgent.load_metadata(AIConfig.ALGORITHM)
+        if meta and meta.get("junction_ids"):
+            self.junction_ids = [
+                str(junction_id)
+                for junction_id in meta["junction_ids"]
+                if str(junction_id or "")
+            ]
+
         model_path = os.path.join(
             AIConfig.MODEL_DIR,
             f"{AIConfig.ALGORITHM.lower()}_traffic",

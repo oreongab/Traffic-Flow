@@ -38,6 +38,7 @@ if _sumo_home:
     sys.path.insert(0, os.path.join(_sumo_home, "tools"))
 
 from ai.config import AIConfig
+from config import Config
 
 PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
@@ -243,7 +244,7 @@ def main():
     args = parser.parse_args()
 
     # Paths
-    sumo_cfg = os.path.join(PROJECT_ROOT, "osm.sumocfg")
+    sumo_cfg = Config.SUMO_CFG_FILE
     if not os.path.exists(sumo_cfg):
         print(f"❌ SUMO config not found at: {sumo_cfg}")
         return

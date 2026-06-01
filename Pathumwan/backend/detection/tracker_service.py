@@ -20,6 +20,7 @@ from services.mapping import (
     get_camera_catalog,
     get_camera_zone_map,
 )
+from services.motion_gate import record_yolo_result, should_run_yolo
 from services.optical_flow import (
     get_bbox_flow,
     get_camera_scene_flow,
@@ -682,11 +683,21 @@ def start_tracker_service_loop() -> None:
             time.sleep(max(2, Config.DETECTION_INTERVAL))
             continue
 
-        for camera_id in sorted(get_camera_catalog().keys()):
+        camera_catalog = get_camera_catalog()
+        for camera_id in sorted(camera_catalog.keys()):
             frame_bytes = get_latest_frame(camera_id, detect=False)
             if not frame_bytes:
                 continue
             try:
+                scene_flow = get_camera_scene_flow(camera_id)
+                if not should_run_yolo(camera_id, scene_flow=scene_flow):
+                    camera_state = _TRACKER_STATE.setdefault(
+                        camera_id,
+                        {"next_track_index": 1, "tracks": {}, "crossings": defaultdict(list)},
+                    )
+                    camera_state["motion_gate_skipped_at"] = _utcnow()
+                    continue
+
                 frame = _decode_frame(frame_bytes)
                 if frame is None:
                     continue
@@ -709,8 +720,8 @@ def start_tracker_service_loop() -> None:
                 if annotated_bytes:
                     set_detect_frame(camera_id, annotated_bytes)
 
+                record_yolo_result(camera_id, normalized)
                 confidence_avg = sum(confidence_values) / len(confidence_values) if confidence_values else 0.0
-                camera_catalog = get_camera_catalog()
                 approach_map = get_camera_approach_map()
                 zone_map = get_camera_zone_map()
                 calibration_map = get_camera_calibration_map()
