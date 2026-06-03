@@ -10,6 +10,8 @@ from database.connection import get_session
 from database.models import TrafficDetection, RoadDensity, Camera
 from config import Config
 
+_edge_metric_cache = None
+
 # Load free-flow speeds and Thai names from pathumwan_roads.json
 _ffs_map = {}
 _name_map = {}
@@ -36,7 +38,7 @@ def get_camera_road_map():
         rows = session.query(Camera).filter(Camera.status == "active").all()
         for row in rows:
             camera_id = str(row.camera_id or "")
-            road_id = str(row.road or "")
+            road_id = str(getattr(row, "road_id", None) or row.road or "")
             if camera_id and road_id:
                 mapping[camera_id] = road_id
     except Exception:
@@ -62,6 +64,32 @@ def _classify_vehicle_type(vtype_id: str) -> str:
     return "car"
 
 
+def _get_edge_metric_cache() -> dict[str, dict[str, float]]:
+    global _edge_metric_cache
+    if _edge_metric_cache is not None:
+        return _edge_metric_cache
+
+    cache: dict[str, dict[str, float]] = {}
+    net_path = Config.SUMO_NET_FILE
+    try:
+        import sumolib
+
+        net = sumolib.net.readNet(net_path, withInternal=False)
+        for edge in net.getEdges():
+            edge_id = str(edge.getID() or "")
+            if not edge_id or edge_id.startswith(":"):
+                continue
+            cache[edge_id] = {
+                "length": float(edge.getLength() or 0.0),
+                "lanes": float(max(1, len(edge.getLanes()) or 1)),
+            }
+    except Exception:
+        cache = {}
+
+    _edge_metric_cache = cache
+    return _edge_metric_cache
+
+
 def compute_density_from_sumo(traci_module, road_edges_map):
     """
     Compute density for each road group from SUMO TraCI.
@@ -69,6 +97,7 @@ def compute_density_from_sumo(traci_module, road_edges_map):
     Returns list of road data dicts.
     """
     road_data = []
+    edge_metrics = _get_edge_metric_cache()
 
     for road_code, edges in road_edges_map.items():
         if not edges:
@@ -83,11 +112,33 @@ def compute_density_from_sumo(traci_module, road_edges_map):
 
         for eid in edges:
             try:
-                count = traci_module.edge.getLastStepVehicleNumber(eid)
-                mean_speed = traci_module.edge.getLastStepMeanSpeed(eid) * 3.6
-                length = traci_module.edge.getLength(eid)
-                lanes = traci_module.edge.getLaneNumber(eid)
-                halted = traci_module.edge.getLastStepHaltingNumber(eid)
+                vehicle_ids = list(traci_module.edge.getLastStepVehicleIDs(eid) or [])
+                count = len(vehicle_ids)
+
+                metric = edge_metrics.get(str(eid), {})
+                length = float(metric.get("length") or 0.0)
+                lanes = int(metric.get("lanes") or 1)
+                if length <= 0:
+                    lane_id = f"{eid}_0"
+                    try:
+                        length = float(traci_module.lane.getLength(lane_id) or 0.0)
+                    except Exception:
+                        length = 0.0
+                if length <= 0:
+                    length = 0.1
+
+                speed_values = []
+                halted = 0
+                for vehicle_id in vehicle_ids:
+                    try:
+                        speed_kmh = float(traci_module.vehicle.getSpeed(vehicle_id) or 0.0) * 3.6
+                        speed_values.append(speed_kmh)
+                        if speed_kmh < 1.0:
+                            halted += 1
+                    except Exception:
+                        continue
+
+                mean_speed = (sum(speed_values) / len(speed_values)) if speed_values else 0.0
 
                 total_vehicles += count
                 total_length += length
@@ -165,6 +216,7 @@ def compute_density_from_detection(camera_id=None):
                 "truck": counts.get("truck", 0),
                 "bus": counts.get("bus", 0),
                 "motorcycle": counts.get("motorcycle", 0),
+                "avg_speed": float(counts.get("avg_speed", 0.0) or 0.0),
                 "timestamp": str(det.timestamp),
             })
         return result
@@ -176,10 +228,26 @@ def get_detection_counts_by_road():
     """Group the latest YOLO detections by road using conservative max counts.
 
     Summing multiple cameras on the same road can double count the same vehicle,
-    so we keep the maximum detected volume per road.
+    so we keep the maximum detected volume per road.  Runtime-generated camera
+    IDs may not exist in the DB when camera sync is blocked by FK constraints,
+    so we also map them from ``simulation.camera_points``.
     """
     detection_rows = compute_density_from_detection()
     camera_road_map = get_camera_road_map()
+
+    try:
+        import simulation
+        for cam in getattr(simulation, "camera_points", []) or []:
+            road_id = str(cam.get("road") or "")
+            if not road_id:
+                continue
+            for alias in (cam.get("camera_id"), cam.get("id"), cam.get("sumo_tls_id")):
+                alias_str = str(alias or "").strip()
+                if alias_str:
+                    camera_road_map.setdefault(alias_str, road_id)
+    except Exception:
+        pass
+
     detection_by_road = {}
 
     for det in detection_rows:
@@ -189,10 +257,14 @@ def get_detection_counts_by_road():
 
         current = detection_by_road.setdefault(
             road_id,
-            {"car": 0, "motorcycle": 0, "bus": 0, "truck": 0, "total": 0},
+            {"car": 0, "motorcycle": 0, "bus": 0, "truck": 0, "total": 0, "avg_speed_sum": 0.0, "camera_count": 0},
         )
         for key in ("car", "motorcycle", "bus", "truck", "total"):
             current[key] = max(current[key], int(det.get(key, 0) or 0))
+            
+        if float(det.get("avg_speed", 0.0)) > 0:
+            current["avg_speed_sum"] += float(det.get("avg_speed", 0.0))
+            current["camera_count"] += 1
 
     return detection_by_road
 
@@ -209,14 +281,15 @@ def merge_detection_floor(road_data, prefer_detection=False):
     for rd in road_data:
         road_id = rd.get("road_id", "")
         det = detection_by_road.get(road_id)
-        if not det:
+        detected_total = int((det or {}).get("total", 0) or 0)
+        if not det or detected_total <= 0:
             continue
-        rd["detected_vehicle_count"] = det["total"]
+        rd["detected_vehicle_count"] = detected_total
         if prefer_detection:
-            rd["vehicle_count"] = det["total"]
+            rd["vehicle_count"] = detected_total
             rd["count_source"] = "camera-detection"
         else:
-            rd["vehicle_count"] = max(int(rd.get("vehicle_count", 0) or 0), det["total"])
+            rd["vehicle_count"] = max(int(rd.get("vehicle_count", 0) or 0), detected_total)
 
         # Dynamically calculate speed using Greenshields traffic model from video analytics counts
         # Camera radius is ~14m (28m total view = 0.028 km)
@@ -230,10 +303,16 @@ def merge_detection_floor(road_data, prefer_detection=False):
 
         has_speed = bool(rd.get("has_speed_data", False))
         current_speed = float(rd.get("avg_speed", 0.0) or 0.0)
+        camera_count = int(det.get("camera_count", 0))
+        optical_speed = float(det.get("avg_speed_sum", 0.0)) / camera_count if camera_count > 0 else 0.0
+
         if prefer_detection or not has_speed or current_speed >= ffs * 0.99:
             # Overwrite speed with YOLO-based calculation when we don't trust the SUMO reading
             # (no SUMO sample yet, or SUMO only reported free-flow).
-            new_speed = ffs * speed_factor
+            if optical_speed > 0:
+                new_speed = optical_speed
+            else:
+                new_speed = ffs * speed_factor
             rd["avg_speed"] = round(new_speed, 1)
             rd["vc_ratio"] = min(vc_ratio, 2.0)
             rd["has_speed_data"] = True

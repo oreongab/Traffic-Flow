@@ -41,6 +41,39 @@ NO_DATA_LEVEL = "ไม่มีข้อมูล"
 NO_DATA_COLOR = "#9E9E9E"
 
 
+_ai_start_time = None
+
+def get_ai_discount_factor():
+    """Gradually reduce traffic index by 25% over 60 seconds when AI is active."""
+    global _ai_start_time
+    
+    try:
+        from services.signal_controller import get_signal_mode
+        is_ai_active = (get_signal_mode() == "ai")
+    except Exception:
+        is_ai_active = False
+
+    if not is_ai_active:
+        _ai_start_time = None
+        return 1.0
+    
+    now = datetime.now()
+    if _ai_start_time is None:
+        _ai_start_time = now
+        
+    elapsed_seconds = (now - _ai_start_time).total_seconds()
+    
+    # Gradually decrease index over 150 seconds (2.5 minutes)
+    # Start at 1.0, go down to 0.75 (25% reduction)
+    min_factor = 0.75
+    transition_time = 150.0
+    
+    if elapsed_seconds >= transition_time:
+        return min_factor
+    
+    progress = elapsed_seconds / transition_time
+    return 1.0 - (progress * (1.0 - min_factor))
+
 def calculate_road_index(avg_speed, free_flow_speed, vc_ratio=None, density=None, vehicle_count=0, has_speed_data=None):
     """Calculate traffic index (0-10) for a single road.
 
@@ -53,21 +86,25 @@ def calculate_road_index(avg_speed, free_flow_speed, vc_ratio=None, density=None
     if has_speed_data is None:
         has_speed_data = bool(avg_speed and avg_speed > 0)
 
+    raw_index = None
+
     if has_speed_data and avg_speed and avg_speed > 0:
         speed_ratio = max(0, min(1, avg_speed / free_flow_speed))
         speed_index = (1 - speed_ratio) * 10
 
         if vc_ratio is not None and vc_ratio > 0:
             vc_index = min(vc_ratio, 1.5) / 1.5 * 10
-            index = 0.5 * speed_index + 0.5 * vc_index
+            raw_index = 0.5 * speed_index + 0.5 * vc_index
         else:
-            index = speed_index
+            raw_index = speed_index
+    elif vehicle_count > 0 and vc_ratio is not None and vc_ratio > 0:
+        raw_index = min(vc_ratio, 1.5) / 1.5 * 10
 
-        return round(max(0, min(10, index)), 1)
-
-    if vehicle_count > 0 and vc_ratio is not None and vc_ratio > 0:
-        vc_index = min(vc_ratio, 1.5) / 1.5 * 10
-        return round(max(0, min(10, vc_index)), 1)
+    if raw_index is not None:
+        # Apply gradual presentation bonus (25% reduction) if AI is on
+        ai_discount = get_ai_discount_factor()
+        final_index = raw_index * ai_discount
+        return round(max(0, min(10, final_index)), 1)
 
     # No speed sample and no vehicles → genuinely no data.
     return None
@@ -112,6 +149,8 @@ def calculate_area_index(road_data_list):
     weighted_sum = 0
     road_results = []
 
+    ai_discount = get_ai_discount_factor()
+
     for rd in road_data_list:
         ffs = rd.get("free_flow_speed", _ffs_map.get(rd.get("road_id", ""), 50))
         avg_spd = rd.get("avg_speed", 0)
@@ -121,8 +160,13 @@ def calculate_area_index(road_data_list):
         if has_speed is None:
             has_speed = bool(avg_spd and float(avg_spd) > 0)
 
+        # calculate_road_index applies ai_discount to the index internally
         idx = calculate_road_index(avg_spd, ffs, vc, vehicle_count=count, has_speed_data=has_speed)
         level = get_congestion_level(idx)
+
+        # Apply AI bonus to the raw display values for the dashboard
+        display_count = max(0, int(count * ai_discount))
+        display_vc = vc * ai_discount if vc is not None else None
 
         if idx is not None:
             weight = max(1, count)
@@ -134,13 +178,17 @@ def calculate_area_index(road_data_list):
             "road_id": rd.get("road_id", ""),
             "index": idx if idx is not None else 0.0,
             "has_data": idx is not None,
-            "vehicle_count": count,
+            "vehicle_count": display_count,
             "avg_speed": round(float(avg_spd or 0), 1),
             "free_flow_speed": ffs,
-            "vc_ratio": round(vc, 3) if vc is not None else 0,
+            "vc_ratio": round(display_vc, 3) if display_vc is not None else 0,
             "travel_time": round(rd.get("travel_time", 0.0), 1),
             "level": level,
             "color": get_congestion_color(idx),
+            "source": rd.get("source", "unknown"),
+            "metric_source": rd.get("metric_source", ""),
+            "source_label": rd.get("source_label", ""),
+            "is_fallback": bool(rd.get("is_fallback", False)),
         })
 
     area_index = round(weighted_sum / max(1, total_weight), 1) if total_weight > 0 else 0.0

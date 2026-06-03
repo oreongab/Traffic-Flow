@@ -17,16 +17,67 @@ import type {
   YearlyStat,
   TopRoad,
   DailyCount,
+  AIAlgorithmOption,
+  AIDecisionHistoryEntry,
   AIStatus,
   Junction,
   HourlyVehicleCount,
+  SystemLogEntry,
 } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+function resolveApiBase(): string {
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_API_URL || "/api";
+  }
+
+  const backendInternalUrl = process.env.BACKEND_INTERNAL_URL?.replace(/\/$/, "");
+
+  return (
+    process.env.INTERNAL_API_BASE ||
+    (backendInternalUrl ? `${backendInternalUrl}/api` : undefined) ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://127.0.0.1:5000/api"
+  );
+}
+
+const API_BASE = resolveApiBase();
+
+function resolveMediaApiBase(): string {
+  const explicit =
+    process.env.NEXT_PUBLIC_STREAM_API_URL ||
+    process.env.NEXT_PUBLIC_MEDIA_API_URL;
+  if (explicit) {
+    return explicit.replace(/\/$/, "");
+  }
+
+  if (typeof window !== "undefined") {
+    const publicApi = process.env.NEXT_PUBLIC_API_URL;
+    if (publicApi && !publicApi.startsWith("/")) {
+      return publicApi.replace(/\/$/, "");
+    }
+
+    const { protocol, hostname, port } = window.location;
+    const isHttpDev = protocol === "http:" && port && port !== "5000";
+    if (isHttpDev) {
+      return `${protocol}//${hostname}:5000/api`;
+    }
+    return "/api";
+  }
+
+  return API_BASE;
+}
+
+const MEDIA_API_BASE = resolveMediaApiBase();
+const SAME_ORIGIN_MEDIA_API_BASE = "/api";
+
+function cameraMediaUrl(base: string, cameraId: string, path: string): string {
+  return `${base}/cameras/${encodeURIComponent(cameraId)}${path}`;
+}
 
 const api = axios.create({
   baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
+  timeout: 8000,
 });
 
 type CacheEntry<T> = {
@@ -95,7 +146,17 @@ export const register = (username: string, email: string, password: string) =>
 export const resetPassword = (identifier: string, newPassword: string) =>
   api.post("/auth/reset-password", { email: identifier, new_password: newPassword });
 
-export const getMe = () => api.get<User>("/auth/me");
+export async function getMe() {
+  const res = await api.get<{ success?: boolean; user?: User } | User>("/auth/me");
+  const payload = res.data;
+  const user = (typeof payload === "object" && payload !== null && "user" in payload)
+    ? payload.user
+    : payload;
+  return {
+    ...res,
+    data: user as User,
+  };
+}
 
 export const updateProfile = (data: { username?: string; email?: string; password?: string }) =>
   api.put("/auth/profile", data);
@@ -120,13 +181,22 @@ export async function getTrafficLights(): Promise<TrafficLight[]> {
 export async function getTrafficIndex(): Promise<TrafficIndexData> {
   return getCached("traffic-index", 2500, async () => {
     const res = await api.get("/traffic-index");
+    // Preserve null when the backend reports no data so the UI can show
+    // "ไม่มีข้อมูล" instead of a misleading `0`. Older callers that read
+    // `index` as a number still get a number when data_available is true.
+    const dataAvailable = res.data.data_available ?? true;
     return {
-      index: res.data.index ?? 0,
+      index: dataAvailable ? (res.data.index ?? 0) : 0,
       level: res.data.level ?? "คล่องตัว",
       color: res.data.color ?? "#22c55e",
       roads: res.data.roads ?? [],
       timestamp: res.data.timestamp ?? "",
       source: res.data.source ?? "unknown",
+      source_label: res.data.source_label ?? undefined,
+      research_note: res.data.research_note ?? undefined,
+      provenance_summary: res.data.provenance_summary ?? undefined,
+      scope: res.data.scope ?? undefined,
+      data_available: dataAvailable,
     };
   });
 }
@@ -148,21 +218,49 @@ export async function getRoadGeometries(): Promise<RoadGeometry[]> {
 // Cameras — unwrap from {cameras: [...]}
 export async function getCameras(): Promise<Camera[]> {
   return getCached("cameras", 8000, async () => {
-    const res = await api.get("/cameras/");
+    const res = await api.get("/cameras");
     return res.data.cameras || [];
   });
 }
 
 export function getCameraFrameUrl(cameraId: string): string {
-  return `${API_BASE}/cameras/${cameraId}/frame`;
+  return cameraMediaUrl(MEDIA_API_BASE, cameraId, "/frame");
+}
+
+export function getCameraDetectFrameUrl(cameraId: string): string {
+  return cameraMediaUrl(MEDIA_API_BASE, cameraId, "/detect");
+}
+
+export function getCameraSameOriginFrameUrl(cameraId: string): string {
+  return cameraMediaUrl(SAME_ORIGIN_MEDIA_API_BASE, cameraId, "/frame");
+}
+
+export function getCameraSameOriginDetectFrameUrl(cameraId: string): string {
+  return cameraMediaUrl(SAME_ORIGIN_MEDIA_API_BASE, cameraId, "/detect");
 }
 
 export function getCameraStreamUrl(cameraId: string): string {
-  return `${API_BASE}/cameras/${cameraId}/stream`;
+  return cameraMediaUrl(MEDIA_API_BASE, cameraId, "/stream");
 }
 
 export function getCameraDetectStreamUrl(cameraId: string): string {
-  return `${API_BASE}/cameras/${cameraId}/detect/stream`;
+  return cameraMediaUrl(MEDIA_API_BASE, cameraId, "/detect/stream");
+}
+
+export function getCameraAnalyticsStreamUrl(cameraId: string, detect = true): string {
+  return `${cameraMediaUrl(MEDIA_API_BASE, cameraId, "/analytics/stream")}?detect=${detect ? "true" : "false"}`;
+}
+
+export function getCameraSameOriginStreamUrl(cameraId: string): string {
+  return cameraMediaUrl(SAME_ORIGIN_MEDIA_API_BASE, cameraId, "/stream");
+}
+
+export function getCameraSameOriginDetectStreamUrl(cameraId: string): string {
+  return cameraMediaUrl(SAME_ORIGIN_MEDIA_API_BASE, cameraId, "/detect/stream");
+}
+
+export function getCameraSameOriginAnalyticsStreamUrl(cameraId: string, detect = true): string {
+  return `${cameraMediaUrl(SAME_ORIGIN_MEDIA_API_BASE, cameraId, "/analytics/stream")}?detect=${detect ? "true" : "false"}`;
 }
 
 export async function getCameraRuntimeStatuses(): Promise<CameraRuntimeStatus[]> {
@@ -182,7 +280,7 @@ export async function getCameraRuntimeBundle(cameraId: string): Promise<CameraRu
 
 export async function getCameraCounts(cameraId: string): Promise<CameraCountsSnapshot> {
   return getCached(`camera-counts:${cameraId}`, 1200, async () => {
-    const res = await api.get(`/cameras/${cameraId}/counts`);
+    const res = await api.get(`/cameras/${encodeURIComponent(cameraId)}/counts`);
     return {
       camera_id: res.data.camera_id || cameraId,
       counts: res.data.counts || { car: 0, motorcycle: 0, bus: 0, truck: 0, total: 0 },
@@ -196,7 +294,7 @@ export async function getCameraCounts(cameraId: string): Promise<CameraCountsSna
 export async function getCameraVehicles(cameraId: string, radius?: number): Promise<CameraVehicleSnapshot> {
   const params = radius ? `?radius=${radius}` : "";
   return getCached(`camera-vehicles:${cameraId}:${radius ?? "default"}`, 1200, async () => {
-    const res = await api.get(`/cameras/${cameraId}/vehicles${params}`);
+    const res = await api.get(`/cameras/${encodeURIComponent(cameraId)}/vehicles${params}`);
     return {
       vehicles: res.data.vehicles || [],
       counts: res.data.counts || { car: 0, motorcycle: 0, bus: 0, truck: 0, total: 0 },
@@ -241,12 +339,38 @@ export async function getAvailableYears(): Promise<number[]> {
 export const setSignalMode = (mode: "ai" | "manual") =>
   api.post("/admin/signal/mode", { mode });
 
-export const setManualSignal = (junction_id: string, state: string) =>
-  api.post("/admin/signal/manual", { junction_id, state });
+export type SignalDirection = "all" | "ns" | "ew" | "n" | "e" | "s" | "w";
+
+export const setManualSignal = (
+  junction_id: string,
+  state: string,
+  direction: SignalDirection = "all"
+) => api.post("/admin/signal/manual", { junction_id, state, direction });
 
 export async function getAIStatus(): Promise<AIStatus> {
   const res = await api.get("/admin/ai-status");
   return res.data;
+}
+
+export async function getAIAlgorithms(): Promise<{ current: string; algorithms: AIAlgorithmOption[] }> {
+  const res = await api.get("/admin/ai/algorithms");
+  return {
+    current: String(res.data.current || ""),
+    algorithms: res.data.algorithms || [],
+  };
+}
+
+export const setAIAlgorithm = (algorithm: string) =>
+  api.post("/admin/ai/algorithm", { algorithm });
+
+export async function getAIDecisionHistory(limit = 30): Promise<AIDecisionHistoryEntry[]> {
+  const res = await api.get(`/admin/ai/decisions?limit=${limit}`);
+  return res.data.decisions || [];
+}
+
+export async function getAdminLogs(): Promise<SystemLogEntry[]> {
+  const res = await api.get("/admin/logs");
+  return res.data || [];
 }
 
 // Signal control

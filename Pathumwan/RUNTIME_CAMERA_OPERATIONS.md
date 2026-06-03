@@ -405,3 +405,203 @@ You still need real per-camera work for:
 - RTSP stream quality and frame rate
 
 Without those inputs, the system will run, but mapped live metrics will stay conservative or empty by design.
+
+---
+
+## Running on Docker
+
+The repo ships [docker-compose.yml](docker-compose.yml) at `Pathumwan/` with 3 services:
+`db` (Postgres 15), `backend` (Flask + YOLO + Optical Flow), `frontend` (Next.js).
+
+### Start everything
+
+```powershell
+cd Pathumwan
+docker compose up -d --build
+```
+
+Wait until `traffixflow_db` is healthy (~10s):
+
+```powershell
+docker compose ps
+# expect:  traffixflow_db       healthy
+#          traffixflow_backend  Up
+#          traffixflow_frontend Up
+```
+
+Open:
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000/api/health
+
+### Switch SYSTEM_MODE without rebuild
+
+Edit [docker-compose.yml](docker-compose.yml) → `backend.environment` → `SYSTEM_MODE=real`,
+then:
+
+```powershell
+docker compose up -d backend
+```
+
+### Tail logs (backend)
+
+```powershell
+docker compose logs -f backend
+# look for these startup lines:
+#   ✓ Started RTSP Ingest thread
+#   ✓ Optical flow loop started (fps_target=2.0, downsample_w=320)
+#   ✓ Tracker loop started (interval=5s)
+```
+
+### Stop / restart / clean
+
+```powershell
+docker compose stop                   # stop containers, keep volumes
+docker compose down                   # stop + remove containers (keep volumes)
+docker compose down -v                # stop + remove containers AND postgres_data volume
+                                      # ⚠ all DB data is lost
+docker compose restart backend        # restart only backend
+```
+
+### Inspect Postgres data on Docker
+
+The DB lives in named volume `postgres_data`. Connect via psql inside the container:
+
+```powershell
+docker compose exec db psql -U traffix_user -d traffixflow
+```
+
+Useful queries:
+
+```sql
+-- camera inventory
+SELECT camera_id, name, road, junction, stream_status FROM cameras LIMIT 20;
+
+-- recent detections
+SELECT camera_id, vehicle_counts, confidence_avg, timestamp
+FROM traffic_detections ORDER BY timestamp DESC LIMIT 20;
+
+-- live road density
+SELECT road_id, vehicle_count, avg_speed, density_level, vc_ratio
+FROM road_density ORDER BY timestamp DESC LIMIT 10;
+
+-- traffic index (latest per road)
+SELECT DISTINCT ON (road_id) road_id, area_index, calculated_at
+FROM traffic_index ORDER BY road_id, calculated_at DESC;
+```
+
+Exit psql with `\q`.
+
+### Backup / restore Postgres volume
+
+```powershell
+# backup to a .sql file on host
+docker compose exec -T db pg_dump -U traffix_user traffixflow > backup.sql
+
+# restore
+type backup.sql | docker compose exec -T db psql -U traffix_user -d traffixflow
+```
+
+### Reset DB without losing volume
+
+```powershell
+docker compose exec db psql -U traffix_user -d traffixflow -c "TRUNCATE TABLE traffic_detections, traffic_index, road_density RESTART IDENTITY;"
+```
+
+For a full schema reset, see "Safe Reset Recipes" above.
+
+### Shell into backend (debug)
+
+```powershell
+docker compose exec backend bash
+# inside container:
+python -c "from services.optical_flow import get_camera_scene_flow; print(get_camera_scene_flow('cam_001'))"
+```
+
+---
+
+## Optical Flow Operations
+
+`services/optical_flow.py` runs Sparse Lucas-Kanade as a separate worker thread in real
+mode. It is **read-only**: consumes JPEG bytes from the in-memory `rtsp_ingest._frame_cache`
+and never touches disk or the database. State is entirely in-memory (~4 MB total).
+
+### Toggle on/off
+
+Optical flow is controlled by env vars at backend boot. To toggle:
+
+```powershell
+# In docker-compose.yml backend.environment, add/edit:
+#   - OPTICAL_FLOW_ENABLED=1     # default; set 0 to disable
+#   - OPTICAL_FLOW_FPS_TARGET=2.0
+docker compose up -d backend
+```
+
+### Verify optical flow is working
+
+```powershell
+curl http://localhost:5000/api/cameras
+# look for these new fields per camera:
+#   "scene_flow_magnitude": 3.42,
+#   "flow_active": true,
+#   "flow_direction_deg": -178.5
+```
+
+If all cameras show `scene_flow_magnitude=0` and `flow_active=false`, check:
+
+1. `OPTICAL_FLOW_ENABLED=1` is set
+2. `docker compose logs backend | grep "Optical flow"` shows loop started
+3. `SYSTEM_MODE=real` (optical flow runs only in real mode by design)
+4. RTSP streams are actually delivering frames (`SELECT camera_id, last_frame_at FROM cameras WHERE stream_enabled=true;`)
+
+### Test YOLO blindness fallback (dev only)
+
+```powershell
+# In docker-compose.yml backend.environment temporarily add:
+#   - YOLO_FORCE_BLIND=1
+docker compose up -d backend
+docker compose logs -f backend
+# /api/cameras response should now show flow_active=true while traffic visible
+# Remove YOLO_FORCE_BLIND when done and restart backend.
+```
+
+### Resource monitoring
+
+```powershell
+docker stats traffixflow_backend
+# Expected with optical flow on, 55 cams real mode (capped at 2 cores / 2 GB):
+#   CPU: 30-50% (of the 2-core limit)
+#   MEM: ~600 MB (out of 2 GB limit)
+```
+
+If CPU saturates, lower `OPTICAL_FLOW_FPS_TARGET` to 1.0 or set
+`OPTICAL_FLOW_CAMERA_ALLOWLIST=cam_id1,cam_id2,...` to enable on a subset only.
+
+### Run unit tests inside the backend container
+
+```powershell
+docker compose exec backend python -m pytest tests/test_optical_flow.py -v
+# expects 6 tests to pass against synthetic checkerboard frames
+```
+
+---
+
+## Common commands cheatsheet
+
+| Command | Purpose |
+|---|---|
+| `docker compose up -d --build` | Build + start all services |
+| `docker compose ps` | List service status |
+| `docker compose logs -f backend` | Tail backend logs |
+| `docker compose exec db psql -U traffix_user -d traffixflow` | Open psql |
+| `docker compose exec backend bash` | Shell into backend |
+| `docker compose restart backend` | Restart only backend |
+| `docker compose down` | Stop and remove containers (keep volume) |
+| `docker compose down -v` | Stop, remove containers + volume (⚠ destroys DB) |
+| `curl localhost:5000/api/health` | Health probe |
+| `curl localhost:5000/api/cameras` | Camera state incl. `scene_flow_magnitude` |
+| `docker stats traffixflow_backend` | Live CPU / RAM usage |
+
+> **Note** for Windows: if `docker compose` is not recognised, try `docker-compose` (legacy v1)
+> or install Docker Desktop latest. The `mem_limit` / `cpus` keys in `docker-compose.yml`
+> work in standalone Compose; `deploy.resources` is honoured under Swarm mode.

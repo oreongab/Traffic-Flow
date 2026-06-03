@@ -19,7 +19,6 @@ RETENTION_DAYS = {
     "traffic_index": 30,
     "road_density": 30,
     "signal_states": 30,
-    "system_logs": 30,
     "ai_decisions": 30,
 }
 # Legacy alias — old callers still reference this.
@@ -279,7 +278,7 @@ def purge_old_raw_data():
     from database.connection import get_session
     from database.models import (
         TrafficDetection, RoadDensity, TrafficIndex, AIDecision,
-        SignalState, SystemLog,
+        SignalState,
     )
 
     now = datetime.now(timezone.utc)
@@ -291,7 +290,6 @@ def purge_old_raw_data():
             ("traffic_index", TrafficIndex, TrafficIndex.timestamp),
             ("ai_decisions", AIDecision, AIDecision.timestamp),
             ("signal_states", SignalState, SignalState.timestamp),
-            ("system_logs", SystemLog, SystemLog.timestamp),
         ]
         for name, model, ts_col in tables:
             days = RETENTION_DAYS.get(name, RAW_RETENTION_DAYS)

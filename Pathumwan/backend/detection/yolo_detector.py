@@ -1,9 +1,12 @@
 """
-YOLO Vehicle Detector — wraps YOLOv8/YOLO11 for vehicle detection from SUMO CCTV frames.
+YOLO Vehicle Detector — wraps Ultralytics YOLO detection models for SUMO CCTV frames.
 """
 
 import os
 import numpy as np
+from runtime_device import get_torch_device
+
+DEFAULT_YOLO_MODEL = "yolo12n.pt"
 
 # Process-wide status flag so /api/system/health can surface the real AI state
 # instead of silently returning zero counts from every camera.
@@ -11,7 +14,20 @@ YOLO_STATUS: dict[str, object] = {
     "available": False,
     "reason": "not loaded yet",
     "model_path": "",
+    "device": "cpu",
+    "half": False,
 }
+
+
+def _detect_device() -> tuple[str, bool]:
+    """Pick the best available torch device for inference.
+
+    Returns ``(device, use_half)``. ``half`` (FP16) is only enabled on CUDA
+    where it is a near-free 2× speedup; on CPU/MPS it is left off because
+    the gain is small or negative.
+    """
+    device, use_half, _reason = get_torch_device()
+    return device, use_half
 
 # Vehicle classes in COCO dataset
 VEHICLE_CLASSES = {
@@ -32,19 +48,48 @@ class YOLODetector:
         self.model_path = model_path or Config.YOLO_MODEL_PATH
         self.confidence = confidence or Config.YOLO_CONFIDENCE
         self.model = None
+        self.device, self.use_half = _detect_device()
+        self.imgsz = int(getattr(Config, "YOLO_IMGSZ", int(os.getenv("YOLO_IMGSZ", 480))))
         self._load_model()
 
     def _load_model(self):
-        """Load YOLO model. Downloads if not found."""
+        """Load the configured YOLO model, preferring YOLO12 defaults."""
         try:
             from ultralytics import YOLO
-            if os.path.exists(self.model_path):
-                self.model = YOLO(self.model_path)
-            else:
-                # Auto-download YOLOv8n
-                self.model = YOLO("yolov8n.pt")
-            print(f"✓ YOLO model loaded: {self.model_path}")
-            YOLO_STATUS.update({"available": True, "reason": "loaded", "model_path": str(self.model_path)})
+            errors: list[str] = []
+            for source in self._candidate_model_sources():
+                try:
+                    self.model = YOLO(source)
+                    resolved_source = getattr(self.model, "ckpt_path", None) or source
+                    # Move to GPU and switch to FP16 when CUDA is available so
+                    # 55 cams × YOLO12n is feasible without saturating the CPU.
+                    try:
+                        self.model.to(self.device)
+                        if self.use_half:
+                            inner = getattr(self.model, "model", None)
+                            if inner is not None and hasattr(inner, "half"):
+                                inner.half()
+                    except Exception as exc:
+                        # Fallback gracefully if half/.to fails — better than
+                        # crashing the whole detector.
+                        print(f"  ⚠ YOLO device move failed ({self.device}, half={self.use_half}): {exc}")
+                        self.device, self.use_half = "cpu", False
+                    print(
+                        f"✓ YOLO model loaded: {resolved_source} "
+                        f"(device={self.device}, half={self.use_half}, imgsz={self.imgsz})"
+                    )
+                    YOLO_STATUS.update({
+                        "available": True,
+                        "reason": "loaded",
+                        "model_path": str(resolved_source),
+                        "device": self.device,
+                        "half": self.use_half,
+                    })
+                    return
+                except Exception as exc:
+                    errors.append(f"{source}: {exc}")
+
+            raise RuntimeError("; ".join(errors))
         except ImportError:
             banner = (
                 "\n" + "=" * 68 + "\n"
@@ -61,6 +106,31 @@ class YOLODetector:
             YOLO_STATUS.update({"available": False, "reason": f"load failed: {e}", "model_path": str(self.model_path)})
             self.model = None
 
+    def _candidate_model_sources(self) -> list[str]:
+        """Return preferred model sources, defaulting to YOLO12n."""
+        requested = str(self.model_path or "").strip()
+        candidates: list[str] = []
+
+        if requested:
+            basename = os.path.basename(requested)
+            if os.path.exists(requested):
+                candidates.append(requested)
+            elif basename == DEFAULT_YOLO_MODEL:
+                candidates.append(DEFAULT_YOLO_MODEL)
+            elif os.path.sep not in requested and requested.endswith(".pt"):
+                candidates.append(requested)
+
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        fallback_candidates = [
+            os.path.join(backend_dir, DEFAULT_YOLO_MODEL),
+            os.path.join(os.path.abspath(os.path.dirname(__file__)), "models", DEFAULT_YOLO_MODEL),
+            DEFAULT_YOLO_MODEL,
+        ]
+        for candidate in fallback_candidates:
+            if candidate not in candidates:
+                candidates.append(candidate)
+        return candidates
+
     def detect(self, frame):
         """
         Detect vehicles in a frame.
@@ -72,6 +142,9 @@ class YOLODetector:
             list of dict: [{"class": "car", "confidence": 0.85, "bbox": [x1,y1,x2,y2]}, ...]
         """
         if self.model is None:
+            return []
+        # Dev/test: force blindness to verify optical-flow blindness fallback
+        if os.getenv("YOLO_FORCE_BLIND") == "1":
             return []
 
         # Convert bytes to numpy if needed
@@ -86,6 +159,9 @@ class YOLODetector:
             frame,
             conf=self.confidence,
             classes=VEHICLE_CLASS_IDS,
+            imgsz=self.imgsz,
+            half=self.use_half,
+            device=self.device,
             verbose=False,
         )
 

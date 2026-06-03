@@ -27,6 +27,51 @@ def _roads_json_path() -> str:
     return os.path.abspath(os.path.join(here, "..", "..", "data", "pathumwan_roads.json"))
 
 
+def _load_roads_payload() -> dict[str, Any]:
+    path = _roads_json_path()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
+def get_research_targets() -> list[dict[str, Any]]:
+    """Return the canonical research subset used for AI/control comparisons."""
+    payload = _load_roads_payload()
+    targets = payload.get("research_targets") or []
+    if not isinstance(targets, list):
+        return []
+    return [target for target in targets if isinstance(target, dict) and target.get("junction_id")]
+
+
+def get_research_junction_ids() -> list[str]:
+    return [str(target.get("junction_id") or "") for target in get_research_targets() if str(target.get("junction_id") or "")]
+
+
+def get_research_camera_ids() -> list[str]:
+    return [str(target.get("camera_id") or "") for target in get_research_targets() if str(target.get("camera_id") or "")]
+
+
+def get_research_target_by_junction() -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for target in get_research_targets():
+        junction_id = str(target.get("junction_id") or "").strip()
+        if junction_id:
+            result[junction_id] = target
+    return result
+
+
+def get_research_target_by_camera() -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for target in get_research_targets():
+        camera_id = str(target.get("camera_id") or "").strip()
+        if camera_id:
+            result[camera_id] = target
+    return result
+
+
 def _load_junction_directory() -> dict[str, str]:
     """Load junction slug/TLS → Thai name map from pathumwan_roads.json (cached by mtime)."""
     global _JUNCTION_DIR, _JUNCTION_DIR_MTIME
@@ -42,8 +87,7 @@ def _load_junction_directory() -> dict[str, str]:
 
         directory: dict[str, str] = {}
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                payload = json.load(f)
+            payload = _load_roads_payload()
             for junction in payload.get("junctions") or []:
                 if not isinstance(junction, dict):
                     continue
@@ -61,10 +105,20 @@ def _load_junction_directory() -> dict[str, str]:
                 slug = str(cam.get("junction") or "").strip().lower()
                 if slug and slug not in directory:
                     # best-effort: strip "CCTV " prefix and take the part before " (" in name
-                    label = str(cam.get("name") or "").strip()
-                    m = re.match(r"^CCTV\s+([^\(\)]+?)(?:\s*\(|$)", label)
-                    if m:
-                        directory[slug] = m.group(1).strip()
+                     label = str(cam.get("name") or "").strip()
+                     m = re.match(r"^CCTV\s+([^\(\)]+?)(?:\s*\(|$)", label)
+                     if m:
+                         directory[slug] = m.group(1).strip()
+            for target in payload.get("research_targets") or []:
+                if not isinstance(target, dict):
+                    continue
+                label_th = str(target.get("label_th") or target.get("camera_label_th") or "").strip()
+                if not label_th:
+                    continue
+                for key_source in ("junction_id", "junction_slug", "camera_id"):
+                    raw = str(target.get(key_source) or "").strip()
+                    if raw:
+                        directory[raw.lower()] = label_th
         except Exception:
             pass
 

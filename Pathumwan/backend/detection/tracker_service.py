@@ -20,6 +20,12 @@ from services.mapping import (
     get_camera_catalog,
     get_camera_zone_map,
 )
+from services.motion_gate import record_yolo_result, should_run_yolo
+from services.optical_flow import (
+    get_bbox_flow,
+    get_camera_scene_flow,
+    get_predicted_center,
+)
 from services.rtsp_ingest import get_latest_frame, set_detect_frame
 
 _TRACKER_STATE: dict[str, dict[str, object]] = {}
@@ -234,6 +240,7 @@ def _match_track(
     center: tuple[float, float],
     matched_ids: set[str],
     now: datetime,
+    camera_id: str = "",
 ) -> tuple[str | None, dict[str, object] | None]:
     best_track_id: str | None = None
     best_track: dict[str, object] | None = None
@@ -253,7 +260,15 @@ def _match_track(
         previous_center = track.get("center") or center
         if not isinstance(previous_center, tuple):
             continue
-        distance = math.hypot(center[0] - previous_center[0], center[1] - previous_center[1])
+        # Goal 3 (Optical Flow): predict where the previous center should be NOW
+        # using accumulated flow vector. Falls back to last-seen center if flow unknown.
+        predicted_center = previous_center
+        if camera_id:
+            dt = max(0.0, (now - last_seen).total_seconds())
+            predicted = get_predicted_center(camera_id, previous_center, dt)
+            if predicted is not None:
+                predicted_center = predicted
+        distance = math.hypot(center[0] - predicted_center[0], center[1] - predicted_center[1])
         bbox_width = max(0.0, float(previous_bbox[2]) - float(previous_bbox[0]))
         bbox_height = max(0.0, float(previous_bbox[3]) - float(previous_bbox[1]))
         threshold = max(40.0, max(bbox_width, bbox_height) * 1.5)
@@ -339,7 +354,7 @@ def _prepare_tracks(
             continue
         vehicle_class = str(detection.get("class") or "car")
         center = _bbox_center(bbox)
-        track_id, previous_track = _match_track(tracks, vehicle_class, center, matched_ids, now)
+        track_id, previous_track = _match_track(tracks, vehicle_class, center, matched_ids, now, camera_id)
         if track_id is None:
             track_id = f"trk-{int(camera_state['next_track_index'])}"
             camera_state["next_track_index"] = int(camera_state["next_track_index"]) + 1
@@ -347,6 +362,8 @@ def _prepare_tracks(
         matched_ids.add(track_id)
 
         speed_kmh = 0.0
+        lk_speed_kmh: float | None = None
+        lk_n_points = 0
         if previous_track is not None:
             previous_center = previous_track.get("center") or center
             previous_last_seen = previous_track.get("last_seen_at")
@@ -357,6 +374,23 @@ def _prepare_tracks(
                     speed_kmh = max(0.0, distance_m / elapsed * 3.6)
                     if previous_track.get("speed_kmh"):
                         speed_kmh = (0.6 * float(previous_track.get("speed_kmh") or 0.0)) + (0.4 * speed_kmh)
+
+        # Goal 2 (Optical Flow): blend LK velocity into bbox-center speed estimate.
+        # LK runs at 0.5s gap (motion 3-15 px) → far less noisy than 5s centroid diff.
+        flow = get_bbox_flow(camera_id, bbox)
+        if flow and flow["n_points"] >= 3 and flow["dt_s"] > 0:
+            flow_target = (
+                center[0] + float(flow["vx_px"]),
+                center[1] + float(flow["vy_px"]),
+            )
+            flow_distance_m = _pixel_distance_to_meters(center, flow_target, calibration)
+            if flow_distance_m is not None:
+                lk_speed_kmh = max(0.0, (flow_distance_m / float(flow["dt_s"])) * 3.6)
+                lk_n_points = int(flow["n_points"])
+                if speed_kmh > 0:
+                    speed_kmh = (0.7 * lk_speed_kmh) + (0.3 * speed_kmh)
+                else:
+                    speed_kmh = lk_speed_kmh
 
         lat_value, lng_value, geo_source = _project_point_to_latlng(center, calibration)
         matched_zones = _get_matching_zones(center, bbox, camera_zones)
@@ -402,6 +436,8 @@ def _prepare_tracks(
             "bbox": bbox,
             "center": center,
             "speed_kmh": speed_kmh,
+            "lk_speed_kmh": lk_speed_kmh,
+            "lk_n_points": lk_n_points,
             "lat": lat_value,
             "lng": lng_value,
             "geo_source": geo_source,
@@ -495,9 +531,17 @@ def _build_live_metrics(
         queue_tracks = [
             track for track in relevant_tracks if any(zone_id in queue_zone_ids for zone_id in list(track.get("zone_ids") or []))
         ]
-        stopped_tracks = [
-            track for track in relevant_tracks if float(track.get("speed_kmh") or 0.0) <= Config.STOPPED_SPEED_THRESHOLD_KMH
-        ]
+        # Goal 4 (Optical Flow): augment stopped detection. A track counts as stopped if
+        # speed < threshold OR the LK flow inside its bbox is below the queue magnitude
+        # threshold (catches the case where speed estimate is noisy but bbox is genuinely stationary).
+        stopped_tracks: list[dict[str, object]] = []
+        for track in relevant_tracks:
+            if float(track.get("speed_kmh") or 0.0) <= Config.STOPPED_SPEED_THRESHOLD_KMH:
+                stopped_tracks.append(track)
+                continue
+            track_flow = get_bbox_flow(camera_id, list(track.get("bbox") or [0, 0, 0, 0]))
+            if track_flow and track_flow["magnitude_px"] < Config.OPTICAL_FLOW_QUEUE_MAGNITUDE_THRESHOLD_PX:
+                stopped_tracks.append(track)
         queue_track_ids = {str(track.get("track_id") or "") for track in queue_tracks}
         for track in stopped_tracks:
             queue_track_ids.add(str(track.get("track_id") or ""))
@@ -556,6 +600,25 @@ def _build_live_metrics(
             "instant_count": int(counts.get("total", 0) or 0),
         }
 
+    # Goal 1 (Optical Flow): YOLO blindness fallback. When YOLO returns no tracks but the
+    # scene clearly has motion (heavy congestion, low light, rain), inject flow_active=True
+    # and a lower-bound flow_veh_per_min derived from active-feature density so downstream
+    # consumers don't read "vehicle_count=0" as "actually empty".
+    if Config.OPTICAL_FLOW_BLINDNESS_FALLBACK_ENABLED and not tracks:
+        scene = get_camera_scene_flow(camera_id)
+        if scene and float(scene.get("magnitude") or 0.0) >= Config.OPTICAL_FLOW_SCENE_ACTIVE_THRESHOLD_PX:
+            for metric in metrics:
+                meta = dict(metric.get("extra_metadata") or {})
+                meta["partial_observation"] = True
+                meta["flow_active"] = True
+                meta["scene_flow_magnitude"] = float(scene.get("magnitude") or 0.0)
+                meta["scene_active_ratio"] = float(scene.get("active_ratio") or 0.0)
+                metric["extra_metadata"] = meta
+                metric["flow_veh_per_min"] = max(
+                    float(metric.get("flow_veh_per_min") or 0.0),
+                    round(float(scene.get("active_ratio") or 0.0) * 6.0, 2),
+                )
+
     return metrics
 
 
@@ -600,11 +663,9 @@ def start_tracker_service_loop() -> None:
 
     detector = None
     try:
-        from detection.yolo_detector import YOLODetector
+        from detection.yolo_detector import get_shared_detector
 
-        detector = YOLODetector()
-        if detector.model is None:
-            detector = None
+        detector = get_shared_detector()
     except Exception:
         detector = None
 
@@ -622,11 +683,21 @@ def start_tracker_service_loop() -> None:
             time.sleep(max(2, Config.DETECTION_INTERVAL))
             continue
 
-        for camera_id in sorted(get_camera_catalog().keys()):
+        camera_catalog = get_camera_catalog()
+        for camera_id in sorted(camera_catalog.keys()):
             frame_bytes = get_latest_frame(camera_id, detect=False)
             if not frame_bytes:
                 continue
             try:
+                scene_flow = get_camera_scene_flow(camera_id)
+                if not should_run_yolo(camera_id, scene_flow=scene_flow):
+                    camera_state = _TRACKER_STATE.setdefault(
+                        camera_id,
+                        {"next_track_index": 1, "tracks": {}, "crossings": defaultdict(list)},
+                    )
+                    camera_state["motion_gate_skipped_at"] = _utcnow()
+                    continue
+
                 frame = _decode_frame(frame_bytes)
                 if frame is None:
                     continue
@@ -649,8 +720,8 @@ def start_tracker_service_loop() -> None:
                 if annotated_bytes:
                     set_detect_frame(camera_id, annotated_bytes)
 
+                record_yolo_result(camera_id, normalized)
                 confidence_avg = sum(confidence_values) / len(confidence_values) if confidence_values else 0.0
-                camera_catalog = get_camera_catalog()
                 approach_map = get_camera_approach_map()
                 zone_map = get_camera_zone_map()
                 calibration_map = get_camera_calibration_map()
@@ -684,6 +755,10 @@ def start_tracker_service_loop() -> None:
                 camera_state["latest_metrics"] = [dict(metric) for metric in metrics]
                 camera_state["confidence_avg"] = float(confidence_avg)
                 camera_state["updated_at"] = _utcnow()
+                
+                speed_values = [float(t.get("speed_kmh") or 0.0) for t in tracks if float(t.get("speed_kmh") or 0.0) > 0]
+                normalized["avg_speed"] = sum(speed_values) / len(speed_values) if speed_values else 0.0
+
                 _save_camera_runtime_state(
                     camera_id,
                     normalized,

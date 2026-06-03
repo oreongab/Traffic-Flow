@@ -17,9 +17,6 @@ const navItems = [
   { href: "/dashboard", label: "หน้าหลัก", icon: Home },
   { href: "/statistics", label: "สถิติ", icon: BarChart3 },
   { href: "/density", label: "ความหนาแน่น", icon: Layers },
-];
-
-const adminItems = [
   { href: "/cameras", label: "กล้องจราจร", icon: Camera },
   { href: "/control", label: "ควบคุม", icon: SlidersHorizontal },
 ];
@@ -37,12 +34,20 @@ export default function Navbar() {
 
   const profileLabel = user?.role === "admin" ? "เจ้าหน้าที่" : "ผู้ใช้ทั่วไป";
 
+  function stopCctvStreamsBeforeNavigation(nextPath?: string) {
+    if (typeof window === "undefined") return;
+    if (nextPath && nextPath === pathname) return;
+    window.dispatchEvent(new Event("traffixflow:stop-cctv-streams"));
+  }
+
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-[9999] h-14 bg-[#5ba8e0] flex items-center px-4 gap-1 shadow-md">
         {/* Logo */}
         <Link
           href="/dashboard"
+          onPointerDown={() => stopCctvStreamsBeforeNavigation("/dashboard")}
+          onClick={() => stopCctvStreamsBeforeNavigation("/dashboard")}
           className="flex items-center gap-2 mr-4 shrink-0"
         >
           <span className="text-white font-bold text-xl tracking-wide">
@@ -59,6 +64,8 @@ export default function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
+                onPointerDown={() => stopCctvStreamsBeforeNavigation(item.href)}
+                onClick={() => stopCctvStreamsBeforeNavigation(item.href)}
                 className={`flex items-center gap-1.5 px-4 py-2 text-sm whitespace-nowrap transition-colors rounded-md ${
                   active
                     ? "bg-white/25 text-white font-semibold"
@@ -70,24 +77,6 @@ export default function Navbar() {
               </Link>
             );
           })}
-          {user?.role === "admin" &&
-            adminItems.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-1.5 px-4 py-2 text-sm whitespace-nowrap transition-colors rounded-md ${
-                    active
-                      ? "bg-white/25 text-white font-semibold"
-                      : "text-white/90 hover:bg-white/15"
-                  }`}
-                >
-                  <item.icon size={16} />
-                  {item.label}
-                </Link>
-              );
-            })}
         </div>
 
         {/* Profile / Right side */}
@@ -212,6 +201,7 @@ export default function Navbar() {
               <div className="flex gap-2 mt-4">
                 <button
                   onClick={() => {
+                    stopCctvStreamsBeforeNavigation("/login");
                     logout();
                     setShowProfile(false);
                     router.push("/login");
@@ -227,6 +217,7 @@ export default function Navbar() {
                         const { deactivateAccount } = await import("@/lib/api");
                         await deactivateAccount();
                       } catch { /* ignore */ }
+                      stopCctvStreamsBeforeNavigation("/login");
                       logout();
                       setShowProfile(false);
                       router.push("/login");

@@ -481,6 +481,8 @@ def api_realtime_counts():
                 rd["last_update"] = str(det.timestamp)
 
             result = sorted(road_data.values(), key=lambda row: row["total"], reverse=True)
+            if not any(_as_int(row.get("total"), 0) > 0 for row in result):
+                result = []
         except Exception:
             result = []
 

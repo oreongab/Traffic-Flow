@@ -49,19 +49,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let active = true;
     const stored = localStorage.getItem("token");
     if (!stored) {
-      setLoading(false);
-      return;
+      const timer = window.setTimeout(() => {
+        if (active) setLoading(false);
+      }, 0);
+      return () => {
+        active = false;
+        window.clearTimeout(timer);
+      };
     }
-    setToken(stored);
-    getMe()
-      .then((res) => setUser(res.data))
-      .catch(() => {
-        localStorage.removeItem("token");
-        setToken(null);
-      })
-      .finally(() => setLoading(false));
+    const timer = window.setTimeout(() => {
+      if (!active) return;
+      setToken(stored);
+      getMe()
+        .then((res) => {
+          if (active) setUser(res.data);
+        })
+        .catch(() => {
+          localStorage.removeItem("token");
+          if (active) setToken(null);
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 0);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   return (

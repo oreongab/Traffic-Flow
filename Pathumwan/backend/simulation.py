@@ -16,12 +16,18 @@ import time
 import random
 import threading
 import math
+import filecmp
+import glob
+import gzip
+import shutil
+import xml.etree.ElementTree as ET
 
 # --- SUMO ---
 if "SUMO_HOME" in os.environ:
     sys.path.append(os.path.join(os.environ["SUMO_HOME"], "tools"))
 import traci
 
+from config import Config
 from utils import find_sumo_binary
 from cctv import collect_cameras
 from cctv_renderer import (
@@ -33,9 +39,9 @@ from cctv_renderer import (
 )
 
 # ═══ Paths ═══
-PROJECT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-NET_FILE = os.path.join(PROJECT_ROOT, "osm.net.xml")
-SUMO_CFG = os.path.join(PROJECT_ROOT, "osm.sumocfg")
+PROJECT_ROOT = Config.PROJECT_ROOT
+NET_FILE = Config.SUMO_NET_FILE
+SUMO_CFG = Config.SUMO_CFG_FILE
 PROFILE_FILE = os.path.join(PROJECT_ROOT, "data", "pathumwan_traffic_profile.json")
 
 # ═══ Vehicle colors for visualization (used by SUMO-GUI if ever opened) ═══
@@ -67,8 +73,17 @@ traffic_profile = None
 road_mapping = {}  # {"RAMA1": ["edge1", "edge2", ...], ...}
 
 # ═══ Frame Cache — pre-rendered CCTV frames ═══
-_frame_cache = {}            # camera_id -> JPEG bytes
+_frame_cache = {}            # camera_id -> JPEG bytes (raw)
 _frame_cache_lock = threading.Lock()
+
+# Cached frames with detection overlays — generated only for cameras currently
+# being viewed in detect mode to keep multi-camera grids responsive.
+_detect_frame_cache = {}     # camera_id -> JPEG bytes (detect)
+_detect_frame_cache_lock = threading.Lock()
+# camera_id -> last requested timestamp (seconds)
+_detect_stream_requested: dict[str, float] = {}
+_detect_stream_requested_lock = threading.Lock()
+_DETECT_REQUEST_TTL_SECONDS = 20.0
 
 # Speed reference from real data (km/h avg per hour — fallback defaults)
 DEFAULT_SPEED_PROFILE = {
@@ -80,14 +95,29 @@ DEFAULT_SPEED_PROFILE = {
 # ─── Helpers ───
 
 def _find_camera(camera_id):
-    return next(
-        (c for c in camera_points
-         if str(c.get("camera_id")) == str(camera_id) or str(c.get("id")) == str(camera_id)),
-        None,
-    )
+    requested = str(camera_id or "").strip()
+    if not requested:
+        return None
+    for camera in camera_points:
+        aliases = {
+            str(camera.get("camera_id") or "").strip(),
+            str(camera.get("id") or "").strip(),
+            str(camera.get("sumo_tls_id") or "").strip(),
+        }
+        if requested in aliases:
+            return camera
+    return None
 
 
-def capture_cctv_frame(camera_id, zoom_level="near", show_detection=False):
+def capture_cctv_frame(
+    camera_id,
+    zoom_level="near",
+    show_detection=False,
+    show_hud=True,
+    show_camera_marker=True,
+    show_detection_labels=True,
+    show_vehicle_labels=True,
+):
     """Capture a virtual CCTV frame by rendering from SUMO data (no GUI needed)."""
     if not sim_active:
         return render_placeholder("SUMO is still starting")
@@ -104,13 +134,10 @@ def capture_cctv_frame(camera_id, zoom_level="near", show_detection=False):
         }
         radius = radius_map.get(str(zoom_level or "near").lower(), DEFAULT_RADIUS)
 
+        # Synthetic CCTV already knows vehicle positions from TraCI, so the
+        # renderer can draw YOLO-style boxes without running the heavy model on
+        # every MJPEG frame. Loading real YOLO here made camera pages stall.
         detector = None
-        if show_detection:
-            try:
-                from detection.yolo_detector import YOLODetector
-                detector = YOLODetector()
-            except Exception:
-                pass
 
         with sim_lock:
             frame_bytes = render_cctv_frame(
@@ -118,6 +145,10 @@ def capture_cctv_frame(camera_id, zoom_level="near", show_detection=False):
                 radius=radius,
                 show_detection=show_detection,
                 detector=detector,
+                show_hud=show_hud,
+                show_camera_marker=show_camera_marker,
+                show_detection_labels=show_detection_labels,
+                show_vehicle_labels=show_vehicle_labels,
             )
         return frame_bytes if frame_bytes else render_placeholder("Render failed")
     except Exception as e:
@@ -157,32 +188,47 @@ def get_camera_counts(camera_id, radius=DEFAULT_RADIUS):
 def camera_capture_loop():
     """Background thread that cycles through all cameras and pre-caches rendered frames.
 
-    Each camera's CCTV view is rendered once per cycle.  MJPEG stream
-    endpoints serve the cached frame instead of rendering on-the-fly,
-    which keeps latency low for multiple simultaneous viewers.
+    Each camera's CCTV view is rendered once per cycle.  MJPEG stream endpoints
+    serve the cached frame instead of rendering on-the-fly, which keeps latency
+    low for multiple simultaneous viewers.
+
+    Detect (overlay) frames are rendered only for cameras currently being viewed
+    in detect mode (see mark_detect_stream_camera) to avoid stalling multi-feed
+    CCTV grids.
     """
     while True:
         if not sim_active or not camera_points:
             time.sleep(2)
             continue
 
+        detect_targets = _detect_targets_snapshot()
+
         for cam in camera_points:
             if not sim_active:
                 break
             cam_id = str(cam.get("camera_id", cam.get("id", "")))
+            if not cam_id:
+                continue
             try:
                 frame = capture_cctv_frame(cam_id, show_detection=False)
                 if frame:
                     with _frame_cache_lock:
                         _frame_cache[cam_id] = frame
+
+                if cam_id in detect_targets:
+                    detect_frame = capture_cctv_frame(cam_id, show_detection=True)
+                    if detect_frame:
+                        with _detect_frame_cache_lock:
+                            _detect_frame_cache[cam_id] = detect_frame
             except Exception:
                 pass
+
             # Tight loop — sim_lock already serializes TraCI reads, so extra
             # sleep here only adds latency to the slowest camera's refresh.
             time.sleep(0.01)
 
-        # Minimal breather between cycles so we don't spin at 100% CPU when
-        # all 46 cameras rendered quickly.
+        # Minimal breather between cycles so we don't spin at 100% CPU when all
+        # cameras render quickly.
         time.sleep(0.03)
 
 
@@ -190,6 +236,30 @@ def get_cached_frame(camera_id):
     """Return the latest pre-cached JPEG bytes for *camera_id*, or None."""
     with _frame_cache_lock:
         return _frame_cache.get(str(camera_id))
+
+
+def mark_detect_stream_camera(camera_id: str) -> None:
+    cam_id = str(camera_id or "").strip()
+    if not cam_id:
+        return
+    now = time.time()
+    with _detect_stream_requested_lock:
+        _detect_stream_requested[cam_id] = now
+
+
+def _detect_targets_snapshot() -> set[str]:
+    now = time.time()
+    with _detect_stream_requested_lock:
+        expired = [cid for cid, ts in _detect_stream_requested.items() if (now - ts) > _DETECT_REQUEST_TTL_SECONDS]
+        for cid in expired:
+            _detect_stream_requested.pop(cid, None)
+        return set(_detect_stream_requested.keys())
+
+
+def get_cached_detect_frame(camera_id):
+    """Return the latest cached detect (overlay) JPEG bytes for *camera_id*, or None."""
+    with _detect_frame_cache_lock:
+        return _detect_frame_cache.get(str(camera_id))
 
 
 # ─── SUMO Setup ───
@@ -216,17 +286,201 @@ def get_sumo_command():
     ]
 
 
+def _sumo_config_route_files() -> list[str]:
+    """Return absolute route files referenced by the active SUMO config."""
+
+    try:
+        root = ET.parse(SUMO_CFG).getroot()
+    except Exception:
+        return []
+
+    cfg_dir = os.path.dirname(os.path.abspath(SUMO_CFG))
+    route_files: list[str] = []
+    for node in root.findall(".//route-files"):
+        for raw in str(node.get("value") or "").split(","):
+            value = raw.strip()
+            if not value:
+                continue
+            route_files.append(value if os.path.isabs(value) else os.path.join(cfg_dir, value))
+    return route_files
+
+
+def _validate_route_file(path: str) -> None:
+    if not os.path.exists(path):
+        raise FileNotFoundError(path)
+    if path.endswith(".gz"):
+        with gzip.open(path, "rb") as fh:
+            while fh.read(1024 * 1024):
+                pass
+
+
+def _matching_dataset_pack() -> str | None:
+    current_dataset = os.path.join(PROJECT_ROOT, "data", "Dataset.csv")
+    packs_root = os.path.abspath(os.path.join(PROJECT_ROOT, "..", "dataset_packs"))
+    if not os.path.exists(current_dataset) or not os.path.isdir(packs_root):
+        return None
+
+    for pack_path in sorted(glob.glob(os.path.join(packs_root, "*", "Pathumwan"))):
+        candidate_dataset = os.path.join(pack_path, "data", "Dataset.csv")
+        if not os.path.exists(candidate_dataset):
+            continue
+        try:
+            if filecmp.cmp(current_dataset, candidate_dataset, shallow=False):
+                return pack_path
+        except OSError:
+            continue
+    return None
+
+
+def _repair_dataset_route_file(route_path: str) -> bool:
+    pack_path = _matching_dataset_pack()
+    if not pack_path:
+        return False
+
+    repaired = False
+    for relative_path in (
+        "osm.dataset.rou.xml.gz",
+        "osm.dataset.trips.xml",
+        os.path.join("data", "dataset_route_mapping.generated.json"),
+    ):
+        src = os.path.join(pack_path, relative_path)
+        dst = os.path.join(PROJECT_ROOT, relative_path)
+        if os.path.exists(src):
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            shutil.copy2(src, dst)
+            if os.path.abspath(dst) == os.path.abspath(route_path):
+                repaired = True
+
+    if repaired:
+        _validate_route_file(route_path)
+    return repaired
+
+
+def _ensure_sumo_route_inputs() -> None:
+    """Validate SUMO route files before TraCI starts.
+
+    A truncated gzip lets Flask keep serving HTTP while SUMO dies, which makes
+    the frontend look mapped but disconnected from runtime data. Repair from
+    the matching dataset pack when possible, otherwise fail loudly.
+    """
+
+    for route_path in _sumo_config_route_files():
+        try:
+            _validate_route_file(route_path)
+        except Exception as exc:
+            print(f"  ⚠ SUMO route invalid: {route_path} ({exc})")
+            if _repair_dataset_route_file(route_path):
+                print(f"  ✓ Repaired SUMO route from matching dataset pack: {route_path}")
+                continue
+            raise RuntimeError(
+                f"SUMO route file is invalid and could not be repaired: {route_path}"
+            ) from exc
+
+
+def _build_sequential4_phases(tid):
+    """Build an 8-phase "เขียวทีละทิศ" program for a 4-arm TLS.
+
+    Returns a list of ``traci.trafficlight.Phase`` (4 green + 4 yellow) or
+    ``None`` if we can't infer ≥4 distinct lane directions (e.g. T-junctions
+    or sumolib unavailable). Caller falls back to the legacy program in that
+    case.
+
+    The order of greens is N → E → S → W. Each green is 25 s, each yellow 3 s
+    so the full cycle is 112 s (within Bangkok's 90-120 s norm).
+    """
+    try:
+        import sumolib
+        import math as _math
+    except Exception:
+        return None
+    try:
+        net = sumolib.net.readNet(NET_FILE, withInternal=False)
+    except Exception:
+        return None
+
+    try:
+        controlled = list(traci.trafficlight.getControlledLanes(tid))
+    except Exception:
+        return None
+    L = len(controlled)
+    if L == 0:
+        return None
+
+    def _heading_bucket(lane_id):
+        try:
+            lane = net.getLane(lane_id)
+            edge = lane.getEdge()
+            fx, fy = edge.getFromNode().getCoord()
+            tx, ty = edge.getToNode().getCoord()
+            heading = (_math.degrees(_math.atan2(ty - fy, tx - fx)) + 360.0) % 360.0
+        except Exception:
+            return None
+        if 45.0 <= heading < 135.0:
+            return "n"
+        if 135.0 <= heading < 225.0:
+            return "w"
+        if 225.0 <= heading < 315.0:
+            return "s"
+        return "e"
+
+    buckets = [_heading_bucket(lane) for lane in controlled]
+    distinct = {b for b in buckets if b is not None}
+    if len(distinct) < 4:
+        # 3-arm or heading inference incomplete — keep legacy program.
+        return None
+
+    def _state_for(direction):
+        chars = []
+        for b in buckets:
+            if b == direction:
+                chars.append("G")
+            else:
+                chars.append("r")
+        return "".join(chars)
+
+    def _yellow_for(direction):
+        chars = []
+        for b in buckets:
+            if b == direction:
+                chars.append("y")
+            else:
+                chars.append("r")
+        return "".join(chars)
+
+    order = ["n", "e", "s", "w"]
+    phases = []
+    for direction in order:
+        phases.append(traci.trafficlight.Phase(
+            duration=25.0, state=_state_for(direction), minDur=15.0, maxDur=35.0,
+        ))
+        phases.append(traci.trafficlight.Phase(
+            duration=3.0, state=_yellow_for(direction), minDur=3.0, maxDur=3.0,
+        ))
+    return phases
+
+
 def _configure_traffic_lights():
     """
     Configure traffic lights with realistic Pathumwan signal programs.
     Bangkok inner city typically uses 90-120 second cycles.
+
+    Two modes (selected by ``Config.SIGNAL_PROGRAM_MODE``):
+      • "pair" (default)  — keep SUMO's NS/EW paired phases; rebalance to 90 s.
+      • "sequential4"     — overwrite each 4-arm TLS with an 8-phase logic
+        that turns each direction green by itself (Issue 7). Falls back to
+        "pair" per-junction when the heading-inference fails.
     """
+    from config import Config as _Cfg
     global tls_ids
     try:
         tls_ids = list(traci.trafficlight.getIDList())
     except Exception:
         tls_ids = []
         return
+
+    use_sequential4 = (_Cfg.SIGNAL_PROGRAM_MODE == "sequential4")
+    sequential_count = 0
+    pair_count = 0
 
     for tid in tls_ids:
         try:
@@ -239,46 +493,58 @@ def _configure_traffic_lights():
             if n_phases == 0:
                 continue
 
-            # Count how many green phases vs yellow/red
-            green_phases = [i for i, p in enumerate(logic.phases) if "G" in p.state or "g" in p.state]
-            yellow_phases = [i for i, p in enumerate(logic.phases) if "y" in p.state]
-            red_phases = [i for i, p in enumerate(logic.phases) if all(c in "r" for c in p.state)]
+            new_phases = None
+            program_id = "pathumwan_90s"
+            if use_sequential4:
+                seq_phases = _build_sequential4_phases(tid)
+                if seq_phases is not None:
+                    new_phases = seq_phases
+                    program_id = "pathumwan_seq4"
+                    sequential_count += 1
 
-            # Build a realistic 90-second cycle
-            CYCLE = 90
-            new_phases = []
-            for i, phase in enumerate(logic.phases):
-                if i in green_phases:
-                    # Distribute green time equally among green phases
-                    green_time = max(15, (CYCLE - len(yellow_phases) * 3 - len(red_phases) * 2) // max(1, len(green_phases)))
-                    new_phases.append(traci.trafficlight.Phase(
-                        duration=float(green_time),
-                        state=phase.state,
-                        minDur=float(green_time * 0.6),
-                        maxDur=float(green_time * 1.4),
-                    ))
-                elif i in yellow_phases:
-                    new_phases.append(traci.trafficlight.Phase(
-                        duration=3.0, state=phase.state, minDur=3.0, maxDur=3.0,
-                    ))
-                else:
-                    # All-red clearance
-                    new_phases.append(traci.trafficlight.Phase(
-                        duration=2.0, state=phase.state, minDur=2.0, maxDur=2.0,
-                    ))
+            if new_phases is None:
+                # Legacy paired-phase rebalance (current behaviour).
+                green_phases = [i for i, p in enumerate(logic.phases) if "G" in p.state or "g" in p.state]
+                yellow_phases = [i for i, p in enumerate(logic.phases) if "y" in p.state]
+                red_phases = [i for i, p in enumerate(logic.phases) if all(c in "r" for c in p.state)]
+
+                CYCLE = 90
+                new_phases = []
+                for i, phase in enumerate(logic.phases):
+                    if i in green_phases:
+                        green_time = max(15, (CYCLE - len(yellow_phases) * 3 - len(red_phases) * 2) // max(1, len(green_phases)))
+                        new_phases.append(traci.trafficlight.Phase(
+                            duration=float(green_time),
+                            state=phase.state,
+                            minDur=float(green_time * 0.6),
+                            maxDur=float(green_time * 1.4),
+                        ))
+                    elif i in yellow_phases:
+                        new_phases.append(traci.trafficlight.Phase(
+                            duration=3.0, state=phase.state, minDur=3.0, maxDur=3.0,
+                        ))
+                    else:
+                        new_phases.append(traci.trafficlight.Phase(
+                            duration=2.0, state=phase.state, minDur=2.0, maxDur=2.0,
+                        ))
+                pair_count += 1
 
             new_logic = traci.trafficlight.Logic(
-                programID="pathumwan_90s",
+                programID=program_id,
                 type=0,
                 currentPhaseIndex=0,
                 phases=new_phases,
             )
             traci.trafficlight.setProgramLogic(tid, new_logic)
-            traci.trafficlight.setProgram(tid, "pathumwan_90s")
-        except Exception:
+            traci.trafficlight.setProgram(tid, program_id)
+        except Exception as exc:
+            print(f"  ⚠ TLS configure failed [{tid}]: {exc}")
             continue
 
-    print(f"  Configured {len(tls_ids)} traffic lights (90s cycle)")
+    if use_sequential4:
+        print(f"  Configured {len(tls_ids)} traffic lights (sequential4: {sequential_count}, pair-fallback: {pair_count})")
+    else:
+        print(f"  Configured {len(tls_ids)} traffic lights (90s pair cycle)")
 
 
 def _colorize_vehicles():
@@ -355,6 +621,7 @@ def _build_road_mapping():
         "PHAYATHAI": ["phayathai", "phaya thai", "พญาไท"],
         "RATCHADAMRI": ["ratchadamri", "ราชดำริ"],
         "PLOENCHIT": ["ploenchit", "เพลินจิต"],
+        "PHETCHABURI": ["phetchaburi", "เพชรบุรี"],
         "BANTHATTHONG": ["banthat thong", "banthatthong", "บรรทัดทอง"],
         "CHARUMUEANG": ["charu mueang", "charumueang", "จารุเมือง"],
         "WITTHAYU": ["witthayu", "wireless", "วิทยุ"],
@@ -422,6 +689,7 @@ def setup_simulation():
     global camera_points, road_mapping
 
     print("Starting SUMO (headless) with calibrated config...")
+    _ensure_sumo_route_inputs()
     traci.start(get_sumo_command())
     time.sleep(2)
 

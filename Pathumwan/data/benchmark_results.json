@@ -1,0 +1,26 @@
+{
+    "RULE_BASED": {
+        "junction_count": 10,
+        "avg_wait_time": 13669.0,
+        "avg_throughput": 3325.0,
+        "avg_reward": 353.3999047619052
+    },
+    "PPO": {
+        "junction_count": 10,
+        "avg_wait_time": 9212.0,
+        "avg_throughput": 2898.0,
+        "avg_reward": 312.8147333333335
+    },
+    "DQN": {
+        "junction_count": 10,
+        "avg_wait_time": 9549.0,
+        "avg_throughput": 3668.0,
+        "avg_reward": 398.94920000000025
+    },
+    "A2C": {
+        "junction_count": 10,
+        "avg_wait_time": 8698.0,
+        "avg_throughput": 3749.0,
+        "avg_reward": 402.61506666666736
+    }
+}

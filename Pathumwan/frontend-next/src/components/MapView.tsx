@@ -6,6 +6,7 @@ import L from "leaflet";
 import { getVehicles, getTrafficLights, getCameras } from "@/lib/api";
 import type { Vehicle, TrafficLight, Camera } from "@/lib/types";
 import CctvFeed from "@/components/CctvFeed";
+import { cameraPrimaryLabel, cameraSecondaryLabel } from "@/lib/cameraLabels";
 import "leaflet/dist/leaflet.css";
 
 const PATHUMWAN_CENTER: [number, number] = [13.7411, 100.5315];
@@ -21,8 +22,15 @@ function vehicleIcon(color: string) {
   });
 }
 
+function stateColor(state: string | undefined): string {
+  if (state === "green") return "#22c55e";
+  if (state === "yellow") return "#eab308";
+  if (state === "red") return "#ef4444";
+  return "#15803d";
+}
+
 function lightIcon(state: string) {
-  const color = state === "green" ? "#22c55e" : state === "yellow" ? "#eab308" : "#ef4444";
+  const color = stateColor(state);
   return L.divIcon({
     className: "",
     html: `<div style="width:14px;height:14px;border-radius:3px;background:${color};border:2px solid #374151;box-shadow:0 0 6px ${color}80;"></div>`,
@@ -31,12 +39,17 @@ function lightIcon(state: string) {
   });
 }
 
-const cameraIcon = L.divIcon({
-  className: "",
-  html: `<div style="width:22px;height:22px;border-radius:50%;background:#22c55e;border:2px solid #15803d;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.25);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-});
+// Camera icon — uniform across all cameras. Traffic-light state is shown
+// by the standalone light marker, not by tinting the camera ring, so every
+// CCTV pin looks the same regardless of signal state.
+function cameraIcon() {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:22px;height:22px;border-radius:50%;background:#0ea5a4;border:2px solid #0e7490;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.25);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  });
+}
 
 function MapInvalidator() {
   const map = useMap();
@@ -109,6 +122,7 @@ export default function MapView({
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [lights, setLights] = useState<TrafficLight[]>([]);
   const [cameras, setCameras] = useState<Camera[]>([]);
+  const [openCameraPopups, setOpenCameraPopups] = useState<Record<string, boolean>>({});
 
   // Vehicles + lights move in real time — refresh fast.
   useEffect(() => {
@@ -153,12 +167,23 @@ export default function MapView({
     }
 
     void refreshCameras();
-    const interval = setInterval(() => void refreshCameras(), 60000);
+    const interval = setInterval(() => void refreshCameras(), 10000);
     return () => {
       active = false;
       clearInterval(interval);
     };
   }, [showCameras]);
+
+  // Track junction keys covered by a camera so we don't draw a standalone
+  // light marker directly on top of the camera icon. (Camera ring colour no
+  // longer encodes signal state — every camera looks the same.)
+  const coveredLightKeys = new Set<string>();
+  if (showCameras && showLights) {
+    for (const c of cameras) {
+      if (c.junction) coveredLightKeys.add(`name:${c.junction}`);
+      coveredLightKeys.add(`coord:${c.lat.toFixed(4)},${c.lng.toFixed(4)}`);
+    }
+  }
 
   return (
     <MapContainer center={PATHUMWAN_CENTER} zoom={15} className="h-full w-full" zoomControl={false}>
@@ -187,39 +212,64 @@ export default function MapView({
         </Marker>
       ))}
 
-      {showLights && lights.map((l) => (
-        <Marker key={l.id} position={[l.lat, l.lng]} icon={lightIcon(l.state)}>
-          <Popup><span className="text-xs text-gray-700">{l.junction_name} — {l.state}</span></Popup>
-        </Marker>
-      ))}
+      {showLights && lights
+        .filter((l) => {
+          if (!showCameras) return true;
+          if (l.junction_name && coveredLightKeys.has(`name:${l.junction_name}`)) return false;
+          if (coveredLightKeys.has(`coord:${l.lat.toFixed(4)},${l.lng.toFixed(4)}`)) return false;
+          return true;
+        })
+        .map((l) => (
+          <Marker key={l.id} position={[l.lat, l.lng]} icon={lightIcon(l.state)}>
+            <Popup><span className="text-xs text-gray-700">{l.junction_name} — {l.state}</span></Popup>
+          </Marker>
+        ))}
 
       {showCameras && cameras.map((c, i) => (
         <Marker
           key={c.camera_id || `cam-${i}`}
           position={[c.lat, c.lng]}
-          icon={cameraIcon}
+          icon={cameraIcon()}
           eventHandlers={{
             click: () => {
               onCameraClick?.(c);
+            },
+            popupopen: () => {
+              setOpenCameraPopups((prev) => ({ ...prev, [c.camera_id]: true }));
+            },
+            popupclose: () => {
+              setOpenCameraPopups((prev) => ({ ...prev, [c.camera_id]: false }));
             },
           }}
         >
           <Popup maxWidth={420} minWidth={380}>
             <div className="text-xs text-gray-700" style={{ width: 380 }}>
               <div className="mb-2 min-w-0">
-                  <p className="font-bold text-sm text-[#1e3a5f] truncate">{c.name}</p>
+                  <p className="font-bold text-sm text-[#1e3a5f] truncate">{cameraPrimaryLabel(c)}</p>
                   <p className="text-gray-400 text-[10px]">{c.camera_id}</p>
               </div>
 
               {cameraPopup === "stream" && (
-                <div className="w-full overflow-hidden rounded-lg border border-gray-200 bg-slate-950" style={{ height: 200 }}>
-                  <CctvFeed
-                    cameraId={c.camera_id}
-                    cameraName={c.name}
-                    subtitle={c.junction || c.road || undefined}
-                    cameraLat={c.lat}
-                    cameraLng={c.lng}
-                  />
+                <div className="w-full overflow-hidden rounded-lg border border-gray-200 bg-slate-950" style={{ height: 260 }}>
+                  {openCameraPopups[c.camera_id] ? (
+                    <CctvFeed
+                      cameraId={c.camera_id}
+                      cameraName={cameraPrimaryLabel(c)}
+                      subtitle={cameraSecondaryLabel(c) || undefined}
+                      detectMode={true}
+                      cameraLat={c.lat}
+                      cameraLng={c.lng}
+                      showCounts={false}
+                      showMiniMap={true}
+                      streamFps={3}
+                      streamMode="analytics"
+                      showInfoOverlay={false}
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-3 text-center text-[11px] text-slate-300">
+                      เปิดหน้าต่างกล้องเพื่อเริ่มสตรีม
+                    </div>
+                  )}
                 </div>
               )}
 

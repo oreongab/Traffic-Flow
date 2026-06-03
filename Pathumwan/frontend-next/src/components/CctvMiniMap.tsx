@@ -156,9 +156,15 @@ export default function CctvMiniMap({
 
   useEffect(() => {
     mountedRef.current = true;
-    fetchVehicles();
+    const initialTimer = window.setTimeout(() => {
+      void fetchVehicles();
+    }, 0);
     const interval = setInterval(fetchVehicles, pollInterval);
-    return () => { mountedRef.current = false; clearInterval(interval); };
+    return () => {
+      mountedRef.current = false;
+      window.clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
   }, [fetchVehicles, pollInterval]);
 
   return (

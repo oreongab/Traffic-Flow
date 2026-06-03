@@ -1,0 +1,119 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: traffixflow_db
+    environment:
+      POSTGRES_USER: traffix_user
+      POSTGRES_PASSWORD: traffix_password
+      POSTGRES_DB: traffixflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U traffix_user -d traffixflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        # Default: CPU-only PyTorch wheels — works on Intel Iris Xe / any laptop.
+        # Override with `docker compose build --build-arg WITH_CUDA=1 backend`
+        # (or use the `gpu` profile below) to install CUDA 12.1 wheels.
+        WITH_CUDA: "0"
+    container_name: traffixflow_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+      - FRONTEND_URL=http://localhost:3000
+      - DATABASE_URI=postgresql://traffix_user:traffix_password@db:5432/traffixflow
+      # Override with SYSTEM_MODE=real CAMERA_BACKEND=rtsp when real camera
+      # stream URLs have been configured in the cameras table.
+      - SYSTEM_MODE=${SYSTEM_MODE:-sim}
+      - CAMERA_BACKEND=${CAMERA_BACKEND:-sumo}
+      # Optical Flow (Sparse Lucas-Kanade) — runs in real mode only
+      # Set OPTICAL_FLOW_ENABLED=0 to disable the worker entirely
+      - OPTICAL_FLOW_ENABLED=1
+      - OPTICAL_FLOW_FPS_TARGET=2.0
+      # Signal program: "pair" = current SUMO defaults (NS-EW pairs);
+      # "sequential4" = override at runtime to a 4-direction sequence
+      # (Issue 7). Stays "pair" by default so existing setups don't change.
+      - SIGNAL_PROGRAM_MODE=pair
+      # Capture loop FPS cap. Lower this if backend struggles on weak hosts.
+      - CAMERA_RENDER_FPS=4
+      # YOLO inference image size. 480 keeps quality high while staying fast.
+      - YOLO_IMGSZ=480
+    volumes:
+      - ./backend:/app/backend
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    # Resource caps. Bumped from 2 GB / 2 CPU to 4 GB / 4 CPU because SUMO +
+    # YOLO + 55 cameras + optical flow combined easily blew the old budget,
+    # which was the root cause of the slow streaming reported on local Docker.
+    # `mem_limit` / `cpus` are read by Compose v2 standalone (non-swarm).
+    # `deploy.resources` is honoured by swarm only.
+    mem_limit: 4g
+    cpus: 4.0
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  # GPU variant — `docker compose --profile gpu up` activates this service
+  # instead of the default `backend`. Requires nvidia-container-toolkit on the
+  # host. Skipped on hosts without NVIDIA, so Pattama's Iris Xe machine still
+  # builds and runs with the default profile.
+  backend-gpu:
+    extends:
+      service: backend
+    profiles: ["gpu"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        WITH_CUDA: "1"
+    container_name: traffixflow_backend_gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+        limits:
+          cpus: '4.0'
+          memory: 8G
+
+  frontend:
+    build:
+      context: ./frontend-next
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api
+        BACKEND_INTERNAL_URL: http://backend:5000
+    container_name: traffixflow_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - BACKEND_INTERNAL_URL=http://backend:5000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

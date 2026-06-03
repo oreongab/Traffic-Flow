@@ -7,7 +7,8 @@ REM Standard dev ports (keep frontend + backend consistent)
 set "BACKEND_PORT=5000"
 set "FRONTEND_PORT=3000"
 set "FRONTEND_URL=http://localhost:%FRONTEND_PORT%"
-set "NEXT_PUBLIC_API_URL=http://localhost:%BACKEND_PORT%/api"
+set "NEXT_PUBLIC_API_URL=/api"
+set "BACKEND_INTERNAL_URL=http://127.0.0.1:%BACKEND_PORT%"
 
 REM Resolve Python command (prefer python.exe, fallback to py launcher)
 set "PYTHON_CMD=python"
@@ -23,7 +24,7 @@ echo.
 REM Start Next.js frontend in the SAME console so closing this window stops everything.
 REM Use npm.cmd to avoid PowerShell execution policy blocking npm.ps1.
 echo Starting Next.js dev server...
-start "TraffixFlow Frontend (Next.js)" /b cmd /c "cd /d frontend-next && if not exist node_modules (npm.cmd install) && set PORT=%FRONTEND_PORT% && set NEXT_PUBLIC_API_URL=%NEXT_PUBLIC_API_URL% && npm.cmd run dev -- -p %FRONTEND_PORT%"
+start "TraffixFlow Frontend (Next.js)" /b cmd /c "cd /d frontend-next && if not exist node_modules (npm.cmd install) && set PORT=%FRONTEND_PORT% && set NEXT_PUBLIC_API_URL=%NEXT_PUBLIC_API_URL% && set BACKEND_INTERNAL_URL=%BACKEND_INTERNAL_URL% && npm.cmd run dev -- -p %FRONTEND_PORT%"
 
 REM Install backend dependencies if needed
 echo.
