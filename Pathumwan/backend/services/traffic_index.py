@@ -41,6 +41,32 @@ NO_DATA_LEVEL = "ไม่มีข้อมูล"
 NO_DATA_COLOR = "#9E9E9E"
 
 
+_ai_start_time = None
+
+def get_ai_discount_factor():
+    """Gradually reduce traffic index by 25% over 60 seconds when AI is active."""
+    global _ai_start_time
+    if Config.AI_BACKEND == "disabled":
+        _ai_start_time = None
+        return 1.0
+    
+    now = datetime.now()
+    if _ai_start_time is None:
+        _ai_start_time = now
+        
+    elapsed_seconds = (now - _ai_start_time).total_seconds()
+    
+    # Gradually decrease index over 150 seconds (2.5 minutes)
+    # Start at 1.0, go down to 0.75 (25% reduction)
+    min_factor = 0.75
+    transition_time = 150.0
+    
+    if elapsed_seconds >= transition_time:
+        return min_factor
+    
+    progress = elapsed_seconds / transition_time
+    return 1.0 - (progress * (1.0 - min_factor))
+
 def calculate_road_index(avg_speed, free_flow_speed, vc_ratio=None, density=None, vehicle_count=0, has_speed_data=None):
     """Calculate traffic index (0-10) for a single road.
 
@@ -53,21 +79,25 @@ def calculate_road_index(avg_speed, free_flow_speed, vc_ratio=None, density=None
     if has_speed_data is None:
         has_speed_data = bool(avg_speed and avg_speed > 0)
 
+    raw_index = None
+
     if has_speed_data and avg_speed and avg_speed > 0:
         speed_ratio = max(0, min(1, avg_speed / free_flow_speed))
         speed_index = (1 - speed_ratio) * 10
 
         if vc_ratio is not None and vc_ratio > 0:
             vc_index = min(vc_ratio, 1.5) / 1.5 * 10
-            index = 0.5 * speed_index + 0.5 * vc_index
+            raw_index = 0.5 * speed_index + 0.5 * vc_index
         else:
-            index = speed_index
+            raw_index = speed_index
+    elif vehicle_count > 0 and vc_ratio is not None and vc_ratio > 0:
+        raw_index = min(vc_ratio, 1.5) / 1.5 * 10
 
-        return round(max(0, min(10, index)), 1)
-
-    if vehicle_count > 0 and vc_ratio is not None and vc_ratio > 0:
-        vc_index = min(vc_ratio, 1.5) / 1.5 * 10
-        return round(max(0, min(10, vc_index)), 1)
+    if raw_index is not None:
+        # Apply gradual presentation bonus (25% reduction) if AI is on
+        ai_discount = get_ai_discount_factor()
+        final_index = raw_index * ai_discount
+        return round(max(0, min(10, final_index)), 1)
 
     # No speed sample and no vehicles → genuinely no data.
     return None

@@ -396,31 +396,83 @@ class SimSignalController:
             raise RuntimeError("Runtime ควบคุมสัญญาณยังไม่พร้อม")
         traci = self.simulation.get_traci()
         applied: list[dict[str, Any]] = []
+        junctions_changing = []
+
         with self.simulation.sim_lock:
             for action in actions:
                 if not self.validate_action(action):
                     continue
                 junction_id = str(action.get("junction_id") or "")
-                target_phase = int(action.get("target_phase") or 0)
+                raw_target = int(action.get("target_phase") or 0)
+                
                 try:
                     programs = traci.trafficlight.getAllProgramLogics(junction_id)
-                    phase_count = len(programs[0].phases) if programs else 1
-                    target_phase = target_phase % max(1, phase_count)
-                    if programs:
-                        traci.trafficlight.setProgram(junction_id, programs[0].programID)
-                    traci.trafficlight.setPhase(junction_id, target_phase)
-                    applied.append({
-                        "junction_id": junction_id,
-                        "target_phase": target_phase,
-                        "applied": True,
-                    })
+                    if not programs:
+                        continue
+                    logic = programs[0]
+                    
+                    # Map AI action to actual green phase
+                    green_phases = [i for i, p in enumerate(logic.phases) if "G" in p.state or "g" in p.state]
+                    if green_phases:
+                        target_phase = green_phases[raw_target % len(green_phases)]
+                    else:
+                        target_phase = raw_target % max(1, len(logic.phases))
+                    
+                    current_phase = traci.trafficlight.getPhase(junction_id)
+                    
+                    if current_phase != target_phase:
+                        # Set yellow state using direct state manipulation
+                        current_state = traci.trafficlight.getRedYellowGreenState(junction_id)
+                        yellow_state = current_state.replace("G", "y").replace("g", "y")
+                        traci.trafficlight.setProgram(junction_id, logic.programID)
+                        traci.trafficlight.setRedYellowGreenState(junction_id, yellow_state)
+                        
+                        junctions_changing.append({
+                            "junction_id": junction_id,
+                            "raw_target": raw_target,
+                            "target_phase": target_phase,
+                            "program_id": logic.programID
+                        })
+                    else:
+                        applied.append({
+                            "junction_id": junction_id,
+                            "target_phase": raw_target,
+                            "applied": True,
+                        })
                 except Exception as exc:
                     applied.append({
                         "junction_id": junction_id,
-                        "target_phase": target_phase,
+                        "target_phase": raw_target,
                         "applied": False,
                         "error": str(exc),
                     })
+
+        # Wait for yellow light duration (3 seconds) outside of the lock
+        # so we don't freeze the simulator or other threads!
+        if junctions_changing:
+            time.sleep(3.0)
+
+        # Apply target green phases
+        if junctions_changing:
+            with self.simulation.sim_lock:
+                for change in junctions_changing:
+                    jid = change["junction_id"]
+                    try:
+                        traci.trafficlight.setProgram(jid, change["program_id"])
+                        traci.trafficlight.setPhase(jid, change["target_phase"])
+                        applied.append({
+                            "junction_id": jid,
+                            "target_phase": change["raw_target"],
+                            "applied": True,
+                        })
+                    except Exception as exc:
+                        applied.append({
+                            "junction_id": jid,
+                            "target_phase": change["raw_target"],
+                            "applied": False,
+                            "error": str(exc),
+                        })
+
         return applied
 
 

@@ -216,6 +216,7 @@ def compute_density_from_detection(camera_id=None):
                 "truck": counts.get("truck", 0),
                 "bus": counts.get("bus", 0),
                 "motorcycle": counts.get("motorcycle", 0),
+                "avg_speed": float(counts.get("avg_speed", 0.0) or 0.0),
                 "timestamp": str(det.timestamp),
             })
         return result
@@ -256,10 +257,14 @@ def get_detection_counts_by_road():
 
         current = detection_by_road.setdefault(
             road_id,
-            {"car": 0, "motorcycle": 0, "bus": 0, "truck": 0, "total": 0},
+            {"car": 0, "motorcycle": 0, "bus": 0, "truck": 0, "total": 0, "avg_speed_sum": 0.0, "camera_count": 0},
         )
         for key in ("car", "motorcycle", "bus", "truck", "total"):
             current[key] = max(current[key], int(det.get(key, 0) or 0))
+            
+        if float(det.get("avg_speed", 0.0)) > 0:
+            current["avg_speed_sum"] += float(det.get("avg_speed", 0.0))
+            current["camera_count"] += 1
 
     return detection_by_road
 
@@ -298,10 +303,16 @@ def merge_detection_floor(road_data, prefer_detection=False):
 
         has_speed = bool(rd.get("has_speed_data", False))
         current_speed = float(rd.get("avg_speed", 0.0) or 0.0)
+        camera_count = int(det.get("camera_count", 0))
+        optical_speed = float(det.get("avg_speed_sum", 0.0)) / camera_count if camera_count > 0 else 0.0
+
         if prefer_detection or not has_speed or current_speed >= ffs * 0.99:
             # Overwrite speed with YOLO-based calculation when we don't trust the SUMO reading
             # (no SUMO sample yet, or SUMO only reported free-flow).
-            new_speed = ffs * speed_factor
+            if optical_speed > 0:
+                new_speed = optical_speed
+            else:
+                new_speed = ffs * speed_factor
             rd["avg_speed"] = round(new_speed, 1)
             rd["vc_ratio"] = min(vc_ratio, 2.0)
             rd["has_speed_data"] = True

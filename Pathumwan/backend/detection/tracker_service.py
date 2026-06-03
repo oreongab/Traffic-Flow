@@ -755,6 +755,10 @@ def start_tracker_service_loop() -> None:
                 camera_state["latest_metrics"] = [dict(metric) for metric in metrics]
                 camera_state["confidence_avg"] = float(confidence_avg)
                 camera_state["updated_at"] = _utcnow()
+                
+                speed_values = [float(t.get("speed_kmh") or 0.0) for t in tracks if float(t.get("speed_kmh") or 0.0) > 0]
+                normalized["avg_speed"] = sum(speed_values) / len(speed_values) if speed_values else 0.0
+
                 _save_camera_runtime_state(
                     camera_id,
                     normalized,

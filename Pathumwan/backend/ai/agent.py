@@ -80,9 +80,12 @@ class FlattenActionWrapper(gym.ActionWrapper):
 
 
 class TrafficAgent:
-    """RL Agent for traffic signal control."""
+    """Wrapper for stable-baselines3 RL models and rule-based baselines."""
 
-    def __init__(self, env=None, algorithm=None):
+    _last_rule_based_actions = None
+    _last_fixed_time_actions = None
+
+    def __init__(self, env=None, algorithm="PPO", model_dir=None):
         self.env = env
         self.algorithm = algorithm or AIConfig.ALGORITHM
         self.model = None
@@ -229,6 +232,9 @@ class TrafficAgent:
         n_junctions = len(observation) // n_features if n_features > 0 else 1
         actions = []
 
+        if TrafficAgent._last_rule_based_actions is None or len(TrafficAgent._last_rule_based_actions) != n_junctions:
+            TrafficAgent._last_rule_based_actions = [0] * n_junctions
+
         for j in range(n_junctions):
             offset = j * n_features
             if offset + n_features > len(observation):
@@ -237,31 +243,23 @@ class TrafficAgent:
 
             queue_norm = observation[offset]          # queue_length (0-1)
             wait_norm = observation[offset + 1]       # waiting_time (0-1)
-            phase_norm = observation[offset + 4]      # current_phase (0-1)
             phase_dur_norm = observation[offset + 5]  # phase_duration (0-1)
 
-            # Reconstruct approximate phase index (reverse of normalization)
-            # phase_norm = current_phase / max(1, phase_count - 1)
-            # Assume 4 phases as default
-            n_phases = 4
-            current_phase_idx = round(phase_norm * max(1, n_phases - 1))
-
-            # Decision logic:
-            # 1. If phase has run for a long time (> 50% of max = 30s)
-            #    AND there's significant queuing → switch to next phase
-            # 2. If waiting time is very high → force switch
-            # 3. Otherwise → hold current phase
             should_switch = False
             if phase_dur_norm > 0.5 and queue_norm > 0.3:
                 should_switch = True
             if wait_norm > 0.6:
                 should_switch = True
+            if phase_dur_norm > 1.5:  # Force switch after 90s just in case
+                should_switch = True
 
+            current_action = TrafficAgent._last_rule_based_actions[j]
             if should_switch:
-                next_phase = (current_phase_idx + 1) % n_phases
-                actions.append(next_phase)
+                next_action = current_action + 1
+                actions.append(next_action)
+                TrafficAgent._last_rule_based_actions[j] = next_action
             else:
-                actions.append(current_phase_idx)
+                actions.append(current_action)
 
         return np.array(actions)
 
@@ -282,25 +280,25 @@ class TrafficAgent:
         # phase_duration is normalized by MAX_GREEN_TIME in the observation
         green_threshold = AIConfig.FIXED_GREEN_TIME / max(1, AIConfig.MAX_GREEN_TIME)
 
+        if TrafficAgent._last_fixed_time_actions is None or len(TrafficAgent._last_fixed_time_actions) != n_junctions:
+            TrafficAgent._last_fixed_time_actions = [0] * n_junctions
+
         for j in range(n_junctions):
             offset = j * n_features
             if offset + n_features > len(observation):
                 actions.append(0)
                 continue
 
-            phase_norm = observation[offset + 4]      # current_phase (0-1)
             phase_dur_norm = observation[offset + 5]  # phase_duration (0-1)
 
-            # Reconstruct approximate phase index
-            n_phases = 4
-            current_phase_idx = round(phase_norm * max(1, n_phases - 1))
-
+            current_action = TrafficAgent._last_fixed_time_actions[j]
             # Simple rule: if green has been on >= FIXED_GREEN_TIME, switch
             if phase_dur_norm >= green_threshold:
-                next_phase = (current_phase_idx + 1) % n_phases
-                actions.append(next_phase)
+                next_action = current_action + 1
+                actions.append(next_action)
+                TrafficAgent._last_fixed_time_actions[j] = next_action
             else:
-                actions.append(current_phase_idx)
+                actions.append(current_action)
 
         return np.array(actions)
 
