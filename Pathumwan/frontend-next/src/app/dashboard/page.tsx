@@ -66,14 +66,26 @@ function indexColor(level: string) {
 }
 
 function trafficSourceLabel(source?: string) {
-  if (source === "live-state") return "Live state";
-  if (source === "sumo-live") return "SUMO live";
-  if (source === "sumo-camera") return "SUMO camera";
-  if (source === "sumo-camera-fallback") return "SUMO camera fallback";
+  if (source === "live-state") return "YOLO + runtime state";
+  if (source === "sumo-live") return "จำลองเสมือนจริง + วิเคราะห์สด";
+  if (source === "sumo-camera") return "ภาพจำลองจากกล้อง";
+  if (source === "sumo-camera-fallback") return "ภาพจำลองสำรอง";
   if (source === "camera-detection") return "YOLO detection";
+  if (source === "camera-yolo") return "YOLO detection primary";
   if (source === "detection-fallback") return "YOLO fallback";
-  if (source === "db-fallback") return "DB fallback";
-  return source || "unknown";
+  if (source === "db-fallback") return "ฐานข้อมูลสำรอง";
+  return source || "runtime analytics";
+}
+
+function formatProvenanceSummary(summary?: Record<string, number>) {
+  if (!summary) return "";
+  const segments: string[] = [];
+  if ((summary.live_detection_roads || 0) > 0) segments.push(`live ${summary.live_detection_roads}`);
+  if ((summary.estimated_roads || 0) > 0) segments.push(`estimated ${summary.estimated_roads}`);
+  if ((summary.fallback_roads || 0) > 0) segments.push(`fallback ${summary.fallback_roads}`);
+  if ((summary.sumo_roads || 0) > 0) segments.push(`sumo ${summary.sumo_roads}`);
+  if ((summary.cached_roads || 0) > 0) segments.push(`cache ${summary.cached_roads}`);
+  return segments.join(" • ");
 }
 
 
@@ -214,17 +226,17 @@ export default function DashboardPage() {
               system is genuinely calm vs not yet reporting. */}
           <div className="absolute top-[72px] right-4 z-[999]">
             {!indexData ? (
-              <div className="min-w-[140px] rounded-xl bg-slate-700 px-5 py-3 text-center text-white shadow-lg">
-                <div className="text-base font-bold leading-tight">กำลังโหลด</div>
-                <div className="mt-1 text-[10px] opacity-90">ดัชนีรถติดแบบเรียลไทม์</div>
-              </div>
-            ) : indexData.data_available === false ? (
+                <div className="min-w-[140px] rounded-xl bg-slate-700 px-5 py-3 text-center text-white shadow-lg">
+                  <div className="text-base font-bold leading-tight">กำลังโหลด</div>
+                  <div className="mt-1 text-[10px] opacity-90">ดัชนีจราจรจาก YOLO analytics</div>
+                </div>
+              ) : indexData.data_available === false ? (
               <div className="bg-amber-500 text-white rounded-xl px-5 py-3 shadow-lg text-center min-w-[140px]">
                 <div className="text-base font-bold leading-tight">
                   ไม่มีข้อมูล
                 </div>
                 <div className="text-[10px] mt-1 opacity-90">
-                  รอระบบรายงานข้อมูลสด
+                  รอ runtime รายงานข้อมูลจากกล้องและตัววิเคราะห์
                 </div>
               </div>
             ) : (
@@ -239,11 +251,22 @@ export default function DashboardPage() {
                   {indexData.level}
                 </div>
                 <div className="mt-1 text-[10px] opacity-80">
-                  {trafficSourceLabel(indexData.source)}
+                  {indexData.source_label || trafficSourceLabel(indexData.source)}
                 </div>
+                {indexData.provenance_summary && (
+                  <div className="mt-0.5 text-[9px] opacity-75">
+                    {formatProvenanceSummary(indexData.provenance_summary)}
+                  </div>
+                )}
+                {indexData.scope && (
+                  <div className="mt-0.5 text-[9px] opacity-75">
+                    {indexData.scope.ai_junction_count || 0} แยก AI / {indexData.scope.monitored_road_count || indexData.roads.length} ถนน
+                  </div>
+                )}
               </div>
             )}
           </div>
+
 
           {/* Bottom legend bar */}
         </main>

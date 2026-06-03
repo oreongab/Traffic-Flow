@@ -19,30 +19,23 @@ class TrafficPredictor:
         self.loaded = False
 
     def load_model(self):
-        """Attempt to load a trained model.
+        """Attempt to load a trained model."""
+        meta = TrafficAgent.load_metadata(AIConfig.ALGORITHM)
+        if meta and meta.get("junction_ids"):
+            self.junction_ids = [
+                str(junction_id)
+                for junction_id in meta["junction_ids"]
+                if str(junction_id or "")
+            ]
 
-        Data Quality Fix #12: Enhanced logging so it's always clear
-        whether the system is using a trained model or rule-based fallback.
-        """
         model_path = os.path.join(
             AIConfig.MODEL_DIR,
             f"{AIConfig.ALGORITHM.lower()}_traffic",
         )
-        zip_path = model_path + ".zip"
-        if os.path.exists(zip_path):
-            file_size_kb = os.path.getsize(zip_path) / 1024
-            print(f"  📦 Found model: {zip_path} ({file_size_kb:.0f} KB)")
+        if os.path.exists(model_path + ".zip"):
             self.loaded = self.agent.load(model_path)
-            if self.loaded:
-                print(f"  ✅ Model loaded — using {AIConfig.ALGORITHM} inference")
-            else:
-                print(f"  ⚠ Model file exists but failed to load — using rule-based fallback")
-                print(f"    The model may be corrupted or incompatible.")
-                print(f"    Re-train with: python -m ai.trainer --algorithm {AIConfig.ALGORITHM}")
         else:
-            print(f"  ⚠ No trained model at: {zip_path}")
-            print(f"    → Using rule-based fallback (NOT {AIConfig.ALGORITHM})")
-            print(f"    → Train a model: python -m ai.trainer --algorithm {AIConfig.ALGORITHM} --timesteps 100000")
+            print(f"⚠ No trained model at {model_path}. Using rule-based fallback.")
             self.loaded = False
         return self.loaded
 

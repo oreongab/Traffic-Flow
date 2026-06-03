@@ -4,17 +4,58 @@ Uses Stable-Baselines3 when available, falls back to smart rule-based agent.
 """
 
 import os
+import shutil
+import zipfile
 from importlib import import_module
 import numpy as np
 import gymnasium as gym
 
 from ai.config import AIConfig
+from runtime_device import get_torch_device
 
 
 def _load_sb3_class(name):
     """Load Stable-Baselines3 symbols lazily so optional installs don't break import-time analysis."""
     module = import_module("stable_baselines3")
     return getattr(module, name)
+
+
+def _normalize_model_archive(path):
+    """Return a loadable SB3 archive path, flattening nested zip exports when needed."""
+    zip_path = path if path.endswith(".zip") else f"{path}.zip"
+    if not os.path.exists(zip_path):
+        return path
+
+    with zipfile.ZipFile(zip_path) as archive:
+        archive_names = archive.namelist()
+        file_names = [
+            name for name in archive_names
+            if name and not name.endswith("/") and not name.startswith("__MACOSX/")
+        ]
+        has_macos_metadata = any(name.startswith("__MACOSX/") for name in archive_names)
+
+        root_files = [name for name in file_names if "/" not in name]
+        if root_files and not has_macos_metadata:
+            return path
+
+        top_levels = {name.split("/", 1)[0] for name in file_names if "/" in name}
+        if not root_files and len(top_levels) != 1:
+            return path
+
+        prefix = f"{next(iter(top_levels))}/" if not root_files else ""
+        normalized_path = zip_path[:-4] + ".normalized.zip"
+        if os.path.exists(normalized_path) and os.path.getmtime(normalized_path) >= os.path.getmtime(zip_path):
+            return normalized_path
+
+        with zipfile.ZipFile(normalized_path, "w", compression=zipfile.ZIP_STORED) as normalized:
+            for name in file_names:
+                if not name.startswith(prefix):
+                    continue
+                normalized_name = name[len(prefix):] if prefix else name
+                with archive.open(name) as source, normalized.open(normalized_name, "w") as target:
+                    shutil.copyfileobj(source, target, length=1024 * 1024)
+
+        return normalized_path
 
 
 class FlattenActionWrapper(gym.ActionWrapper):
@@ -45,6 +86,8 @@ class TrafficAgent:
         self.env = env
         self.algorithm = algorithm or AIConfig.ALGORITHM
         self.model = None
+        self.device, _, self.device_reason = get_torch_device()
+        print(f"🧠 RL agent device: {self.device} — {self.device_reason}")
 
     def train(self, total_timesteps=None, callback=None):
         """Train the agent using Stable-Baselines3."""
@@ -68,7 +111,7 @@ class TrafficAgent:
                     max_grad_norm=AIConfig.MAX_GRAD_NORM,
                     verbose=1,
                     tensorboard_log=None,  # Set to AIConfig.LOG_DIR if tensorboard installed
-                    device="cpu",
+                    device=self.device,
                 )
             elif self.algorithm == "DQN":
                 DQN = _load_sb3_class("DQN")
@@ -103,7 +146,7 @@ class TrafficAgent:
                     gradient_steps=1,
                     verbose=1,
                     tensorboard_log=None,
-                    device="cpu",
+                    device=self.device,
                 )
             elif self.algorithm == "A2C":
                 A2C = _load_sb3_class("A2C")
@@ -114,7 +157,7 @@ class TrafficAgent:
                     gamma=AIConfig.GAMMA,
                     verbose=1,
                     tensorboard_log=None,
-                    device="cpu",
+                    device=self.device,
                 )
             elif self.algorithm == "RULE_BASED":
                 print("✓ Rule-based agent does not require training.")
@@ -294,20 +337,21 @@ class TrafficAgent:
             return True
 
         path = path or os.path.join(AIConfig.MODEL_DIR, f"{self.algorithm.lower()}_traffic")
+        load_path = _normalize_model_archive(path)
         try:
             if self.algorithm == "PPO":
                 PPO = _load_sb3_class("PPO")
-                self.model = PPO.load(path, env=self.env)
+                self.model = PPO.load(load_path, env=self.env, device=self.device)
             elif self.algorithm == "DQN":
                 DQN = _load_sb3_class("DQN")
                 wrapped_env = self.env
                 if hasattr(self.env, "action_space") and isinstance(self.env.action_space, gym.spaces.MultiDiscrete):
                     wrapped_env = FlattenActionWrapper(self.env)
-                self.model = DQN.load(path, env=wrapped_env)
+                self.model = DQN.load(load_path, env=wrapped_env, device=self.device)
             elif self.algorithm == "A2C":
                 A2C = _load_sb3_class("A2C")
-                self.model = A2C.load(path, env=self.env)
-            print(f"✓ Model loaded from {path}")
+                self.model = A2C.load(load_path, env=self.env, device=self.device)
+            print(f"✓ Model loaded from {path} (device={self.device})")
             return True
         except Exception as e:
             print(f"⚠ Failed to load model for {self.algorithm}: {e}")

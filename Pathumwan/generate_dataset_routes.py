@@ -111,18 +111,18 @@ ALIAS_METADATA = {
 
 
 VEHICLE_SPECS = {
-    "รถจักรยาน": VehicleSpec("bike_bicycle", "bicycle", ("motorcycle", "passenger"), {"vClass": "bicycle", "length": "1.8", "maxSpeed": "7.5", "color": "60,180,75", "minGap": "0.5", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "2"}),
-    "รถจักรยานยนต์": VehicleSpec("moto_motorcycle", "motorcycle", (), {"vClass": "motorcycle", "length": "2.2", "maxSpeed": "18", "color": "230,25,75", "minGap": "0.5", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "2"}),
-    "รถตุ๊กตุ๊ก_สามล้อ": VehicleSpec("tuktuk_passenger", "passenger", (), {"vClass": "passenger", "length": "3.2", "maxSpeed": "12", "color": "245,130,48", "minGap": "0.8", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "3"}),
-    "รถยนต์นั่งส่วนบุคคล": VehicleSpec("car_passenger", "passenger", (), {"vClass": "passenger", "length": "4.7", "maxSpeed": "16", "color": "0,130,200", "minGap": "1.0", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "3"}),
-    "รถแท็กซี่": VehicleSpec("taxi_passenger", "taxi", ("passenger",), {"vClass": "taxi", "length": "4.8", "maxSpeed": "16", "color": "255,225,25", "minGap": "1.0", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "3"}),
-    "รถตู้": VehicleSpec("van_passenger", "passenger", (), {"vClass": "passenger", "length": "5.6", "maxSpeed": "15", "color": "67,99,216", "minGap": "1.0", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "3"}),
-    "รถโดยสารขนาดเล็ก": VehicleSpec("minibus_bus", "bus", (), {"vClass": "bus", "length": "7.5", "maxSpeed": "13", "color": "145,30,180", "minGap": "1.2", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "3"}),
-    "รถโดยสารขนาดใหญ่": VehicleSpec("bus_bus", "bus", (), {"vClass": "bus", "length": "12.0", "maxSpeed": "12", "color": "240,50,230", "minGap": "1.5", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "3"}),
-    "รถบรรทุก4ล้อ": VehicleSpec("truck4_truck", "truck", (), {"vClass": "truck", "length": "6.5", "maxSpeed": "12", "color": "128,128,128", "minGap": "1.2", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "3"}),
-    "รถบรรทุก6ล้อ": VehicleSpec("truck6_truck", "truck", (), {"vClass": "truck", "length": "8.5", "maxSpeed": "11", "color": "128,128,128", "minGap": "1.5", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "3"}),
-    "รถบรรทุก10ล้อขึ้นไป": VehicleSpec("truck10_truck", "truck", (), {"vClass": "truck", "length": "11.5", "maxSpeed": "10", "color": "128,128,128", "minGap": "1.8", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "4"}),
-    "รถพ่วง_รถกึ่งพ่วง": VehicleSpec("trailer_truck", "truck", (), {"vClass": "truck", "length": "14.5", "maxSpeed": "9", "color": "90,90,90", "minGap": "2.0", "sigma": "0.2", "tau": "0.8", "jmIgnoreFoeProb": "0.15", "jmCrossingGap": "4"}),
+    "รถจักรยาน": VehicleSpec("bike_bicycle", "bicycle", ("motorcycle", "passenger"), {"vClass": "bicycle", "length": "1.8", "maxSpeed": "7.5", "color": "60,180,75"}),
+    "รถจักรยานยนต์": VehicleSpec("moto_motorcycle", "motorcycle", (), {"vClass": "motorcycle", "length": "2.2", "maxSpeed": "18", "color": "230,25,75"}),
+    "รถตุ๊กตุ๊ก_สามล้อ": VehicleSpec("tuktuk_passenger", "passenger", (), {"vClass": "passenger", "length": "3.2", "maxSpeed": "12", "color": "245,130,48"}),
+    "รถยนต์นั่งส่วนบุคคล": VehicleSpec("car_passenger", "passenger", (), {"vClass": "passenger", "length": "4.7", "maxSpeed": "16", "color": "0,130,200"}),
+    "รถแท็กซี่": VehicleSpec("taxi_passenger", "taxi", ("passenger",), {"vClass": "taxi", "length": "4.8", "maxSpeed": "16", "color": "255,225,25"}),
+    "รถตู้": VehicleSpec("van_passenger", "passenger", (), {"vClass": "passenger", "length": "5.6", "maxSpeed": "15", "color": "67,99,216"}),
+    "รถโดยสารขนาดเล็ก": VehicleSpec("minibus_bus", "bus", (), {"vClass": "bus", "length": "7.5", "maxSpeed": "13", "color": "145,30,180"}),
+    "รถโดยสารขนาดใหญ่": VehicleSpec("bus_bus", "bus", (), {"vClass": "bus", "length": "12.0", "maxSpeed": "12", "color": "240,50,230"}),
+    "รถบรรทุก4ล้อ": VehicleSpec("truck4_truck", "truck", (), {"vClass": "truck", "length": "6.5", "maxSpeed": "12", "color": "128,128,128"}),
+    "รถบรรทุก6ล้อ": VehicleSpec("truck6_truck", "truck", (), {"vClass": "truck", "length": "8.5", "maxSpeed": "11", "color": "128,128,128"}),
+    "รถบรรทุก10ล้อขึ้นไป": VehicleSpec("truck10_truck", "truck", (), {"vClass": "truck", "length": "11.5", "maxSpeed": "10", "color": "128,128,128"}),
+    "รถพ่วง_รถกึ่งพ่วง": VehicleSpec("trailer_truck", "truck", (), {"vClass": "truck", "length": "14.5", "maxSpeed": "9", "color": "90,90,90"}),
 }
 
 

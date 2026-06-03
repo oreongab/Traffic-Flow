@@ -39,7 +39,7 @@
       "camera_id": "TFF03",
       "camera_name": "CCTV แยกอังรีดูนังต์ (ถ.พระราม 1/อังรีดูนังต์)",
       "road_id": "HENRIDUNANT",
-      "junction_id": "11159437081",
+      "junction_id": "joinedS_11159437081_11159437085_11159437086_cluster_11159437069_11159437077_11159437082_2084092282_#5more",
       "status": "active",
       "calibration": {
         "image_width": 1280,
@@ -56,7 +56,7 @@
       "camera_id": "TFF05",
       "camera_name": "CCTV แยกชิดลม (ถ.เพลินจิต ฝั่ง BTS ชิดลม)",
       "road_id": "PLOENCHIT",
-      "junction_id": "cluster_2419740242_275515928",
+      "junction_id": "joinedS_2419740285_cluster_2419740242_275515928",
       "status": "active",
       "calibration": {
         "image_width": 1280,

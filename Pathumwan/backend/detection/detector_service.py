@@ -9,6 +9,7 @@ when YOLO is unavailable.
 
 import time
 from config import Config
+from services.motion_gate import record_yolo_result, should_run_yolo
 
 
 def start_detection_loop():
@@ -50,8 +51,14 @@ def start_detection_loop():
         for cam in cameras:
             cam_id = str(cam.get("camera_id", cam.get("id", "")))
             try:
-                if detector:
-                    # Render a CCTV frame and run YOLO on it
+                with simulation.sim_lock:
+                    sim_counts = count_vehicles_near_camera(
+                        simulation.get_traci(), cam, DEFAULT_RADIUS,
+                    )
+
+                if detector and should_run_yolo(cam_id, sim_counts=sim_counts):
+                    # Render a CCTV frame and run YOLO only when the camera is active
+                    # or when the heartbeat interval asks for a fresh sample.
                     frame_bytes = simulation.capture_cctv_frame(cam_id, show_detection=False)
                     if not frame_bytes:
                         continue
@@ -69,18 +76,12 @@ def start_detection_loop():
                     # rendered top-down view. Keep SUMO proximity counts as a floor
                     # so downstream realtime/historical metrics are not poisoned by
                     # zero-only detection snapshots.
-                    with simulation.sim_lock:
-                        sim_counts = count_vehicles_near_camera(
-                            simulation.get_traci(), cam, DEFAULT_RADIUS,
-                        )
                     for key in ("car", "motorcycle", "bus", "truck", "total"):
                         counts[key] = max(int(counts.get(key, 0) or 0), int(sim_counts.get(key, 0) or 0))
+                    record_yolo_result(cam_id, counts)
                 else:
-                    # Use TraCI proximity counting (no YOLO needed)
-                    with simulation.sim_lock:
-                        counts = count_vehicles_near_camera(
-                            simulation.get_traci(), cam, DEFAULT_RADIUS,
-                        )
+                    # Use cheap proximity counting when YOLO is gated off/unavailable.
+                    counts = sim_counts
                     confidence_avg = 0.0
 
                 # Normalize counts.

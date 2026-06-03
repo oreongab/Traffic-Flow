@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2026-06-03T11:27:13.858365+07:00 by Eclipse SUMO sumo 1.26.0
-<sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+<!-- generated on 2026-06-01 10:54:45 by Eclipse SUMO sumo Version 1.18.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
-        <net-file value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.net.xml"/>
-        <route-files value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.dataset.rou.xml.gz"/>
-        <additional-files value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.poly.xml,C:\src\antigravity\Traffic-Flow\Pathumwan\backend\ai\..\..\output.add.xml"/>
+        <net-file value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../osm.runtime.net.xml"/>
+        <route-files value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../osm.dataset.rou.xml.gz"/>
+        <additional-files value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../osm.poly.xml,/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../output.add.xml"/>
     </input>
 
     <output>
-        <tripinfo-output value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\ai\..\..\tripinfos.xml"/>
-        <statistic-output value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\ai\..\..\stats.xml"/>
+        <tripinfo-output value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../tripinfos.xml"/>
+        <statistic-output value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../stats.xml"/>
     </output>
 
     <time>
@@ -21,13 +21,9 @@
     </time>
 
     <processing>
-        <ignore-junction-blocker value="10"/>
         <ignore-route-errors value="true"/>
-        <collision.action value="none"/>
-        <scale value="1.0"/>
         <time-to-teleport value="300"/>
         <time-to-teleport.highways value="0"/>
-        <waiting-time-memory value="300"/>
         <tls.actuated.jam-threshold value="30"/>
     </processing>
 
@@ -44,26 +40,14 @@
     </report>
 
     <traci_server>
-        <remote-port value="53990"/>
+        <remote-port value="55151"/>
     </traci_server>
 
     <gui_only>
-        <gui-settings-file value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\ai\..\..\osm.view.xml"/>
+        <gui-settings-file value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../osm.view.xml"/>
+        <quit-on-end value="false"/>
+        <start value="true"/>
+        <delay value="50"/>
     </gui_only>
 
-</sumoConfiguration>
--->
-
-<statistics xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/statistic_file.xsd">
-    <performance clockBegin="156259.89" clockEnd="156504.83" clockDuration="244.95" traciDuration="11.75" realTimeFactor="14.71" vehicleUpdatesPerSecond="61100.83" personUpdatesPerSecond="0.00" begin="25200.00" end="28803.00" duration="3603.00"/>
-    <vehicles loaded="93155" inserted="19960" running="5650" waiting="73191"/>
-    <teleports total="1210" jam="1033" yield="105" wrongLane="72"/>
-    <safety collisions="0" emergencyStops="0" emergencyBraking="139"/>
-    <persons loaded="0" running="0" jammed="0"/>
-    <personTeleports total="0" abortWait="0" wrongDest="0"/>
-    <vehicleTripStatistics count="14234" routeLength="778.43" speed="10.74" duration="241.95" waitingTime="153.19" timeLoss="184.77" departDelay="265.05" departDelayWaiting="-1.00" totalTravelTime="3443901.00" totalDepartDelay="3791195.81"/>
-    <bikeTripStatistics count="76" routeLength="1238.27" speed="5.96" duration="374.47" waitingTime="171.41" timeLoss="205.18" departDelay="243.07" totalTravelTime="28460.00"/>
-    <pedestrianStatistics number="0" routeLength="0.00" duration="0.00" timeLoss="0.00"/>
-    <rideStatistics number="0"/>
-    <transportStatistics number="0"/>
-</statistics>
+</configuration>

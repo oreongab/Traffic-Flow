@@ -93,7 +93,13 @@ export default function StatisticsPage() {
   const [liveIndex, setLiveIndex] = useState<TrafficIndexData | null>(null);
   const [liveRoads, setLiveRoads] = useState<RoadDensity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => new Date());
   const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     getAvailableYears()
@@ -170,7 +176,7 @@ export default function StatisticsPage() {
     };
   }, []);
 
-  const liveTimestamp = liveIndex?.timestamp || new Date().toISOString();
+  const liveTimestamp = now.toISOString();
   const liveDate = toIsoDate(liveTimestamp);
   const liveRealtimeTotal = realtimeData.reduce(
     (sum, row) => sum + Number(row.total || 0),
@@ -366,7 +372,7 @@ export default function StatisticsPage() {
                               สถานะจราจรแบบเรียลไทม์
                             </h2>
                             <p className="text-xs text-gray-500 mt-1">
-                              โหมดจริงใช้ YOLO และ live camera state เป็นหลัก ส่วนโหมดจำลองใช้ SUMO; ความเร็ว ความหนาแน่น และดัชนีเป็นค่าที่ระบบคำนวณจากข้อมูลสดของโหมดนั้น
+                              ระบบนี้เน้นการวิเคราะห์แบบเรียลจาก YOLO detection แล้วคำนวณต่อเป็นความเร็ว ความหนาแน่น และดัชนีจราจร โดยโหมดจำลองจะใช้ runtime เสมือนจริงเป็นฐานข้อมูลภาพ
                             </p>
                           </div>
                           {liveIndex.data_available === false ? (
@@ -383,8 +389,8 @@ export default function StatisticsPage() {
                         </div>
                         {liveIndex.data_available === false ? (
                           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                            ยังไม่มีข้อมูลจราจร — ตรวจสอบว่า SUMO simulation ทำงานอยู่
-                            หรือกล้องส่งข้อมูลครบแล้วหรือยัง (ค่ายังไม่อัปเดต ไม่ใช่จราจรว่าง)
+                            ยังไม่มีข้อมูลจราจร — ตรวจสอบว่า runtime กล้องและตัววิเคราะห์กำลังทำงานอยู่
+                            (ค่ายังไม่อัปเดต ไม่ได้แปลว่าถนนว่าง)
                           </div>
                         ) : (
                           <div className="flex items-center gap-4">
@@ -396,7 +402,7 @@ export default function StatisticsPage() {
                             </div>
                             <div>
                               <div className="text-lg font-semibold text-[#1e3a5f]">{liveIndex.level}</div>
-                              <div className="text-xs text-gray-400">อัปเดตล่าสุด: {new Date(liveIndex.timestamp).toLocaleTimeString("th-TH")}</div>
+                              <div className="text-xs text-gray-400">อัปเดตล่าสุด: {now.toLocaleTimeString("th-TH")}</div>
                             </div>
                           </div>
                         )}
@@ -406,9 +412,9 @@ export default function StatisticsPage() {
                     {/* Live road density table */}
                     {liveRoads.length > 0 && (
                       <div className="bg-white rounded-xl border border-gray-200 p-6">
-                        <h2 className="text-lg font-bold text-[#1e3a5f] mb-4">
-                          ความหนาแน่นจราจรแต่ละถนน (YOLO-based)
-                        </h2>
+                          <h2 className="text-lg font-bold text-[#1e3a5f] mb-4">
+                            ความหนาแน่นจราจรแต่ละถนน (YOLO analytics)
+                          </h2>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
@@ -448,7 +454,7 @@ export default function StatisticsPage() {
                             จำนวนรถตามถนน (ตรวจจับจากกล้อง)
                           </h2>
                           <p className="text-xs text-gray-500 mt-1">
-                            รวมจาก YOLO ต่อถนนแบบ conservative เพื่อเลี่ยงการนับซ้ำระหว่างหลายกล้องบนถนนเดียวกัน และค่อย fallback เป็น SUMO เมื่อยังไม่มี detection
+                            รวมจาก YOLO ต่อถนนแบบ conservative เพื่อเลี่ยงการนับซ้ำระหว่างหลายกล้องบนถนนเดียวกัน และค่อย fallback เป็น runtime จำลองเมื่อยังไม่มี detection
                           </p>
                         </div>
                       </div>
@@ -473,10 +479,10 @@ export default function StatisticsPage() {
                                 </div>
                                 <div className="text-[10px] text-gray-400">
                                   {String(rd.source || "").startsWith("sumo") && (
-                                    <span className="text-blue-500">SUMO Live</span>
+                                    <span className="text-blue-500">Runtime จำลอง</span>
                                   )}
                                   {rd.source === "camera-detection" && (
-                                    <span className="text-amber-500">Camera Detection</span>
+                                    <span className="text-amber-500">YOLO Detection</span>
                                   )}
                                   {rd.avg_speed ? ` • ${Number(rd.avg_speed).toFixed(1)} km/h` : ""}
                                 </div>

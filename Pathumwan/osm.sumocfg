@@ -25,10 +25,7 @@
         <ignore-route-errors value="true"/>
         <time-to-teleport value="300"/>
         <time-to-teleport.highways value="0"/>
-        <ignore-junction-blocker value="10"/>
         <tls.actuated.jam-threshold value="30"/>
-        <collision.action value="none"/>
-        <scale value="1.0"/> <!-- Full traffic volume — realistic Pathumwan conditions -->
     </processing>
 
     <routing>

@@ -7,6 +7,8 @@ import os
 import xml.etree.ElementTree as ET
 from functools import lru_cache
 
+from config import Config
+
 # --- pyproj for UTM -> WGS84 ---
 try:
     from pyproj import Transformer
@@ -24,7 +26,7 @@ NET_OFFSET_Y = -1516302.89
 
 @lru_cache(maxsize=1)
 def _load_net_bounds():
-    net_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "osm.net.xml"))
+    net_path = os.path.abspath(Config.SUMO_NET_FILE)
     if not os.path.exists(net_path):
         return None
 

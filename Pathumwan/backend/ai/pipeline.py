@@ -5,12 +5,6 @@ vectors that can be fed into the existing RL environment/predictor or exported
 for supervised/offline training.
 """
 
-# Data quality fixes applied:
-#   - Issue #3/#11: Urban speed capping at 60 km/h (URBAN_SPEED_CAP_KMH)
-#     SUMO returns max allowed edge speed when no vehicles are present,
-#     which can be 80-120 km/h on arterial roads. This is unrealistic for
-#     Pathumwan urban intersections, so we cap it.
-
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
@@ -20,11 +14,6 @@ from typing import Any, Iterable, Sequence
 import numpy as np
 
 from ai.config import AIConfig
-
-# Urban speed cap for Pathumwan district — fixes data quality issues #3, #11
-# SUMO returns max edge speed when no vehicles are present (80-120 km/h)
-# which is unrealistic for urban intersections.
-URBAN_SPEED_CAP_KMH = 60.0
 from config import Config
 from services.live_state import get_latest_junction_state
 from services.mapping import get_junction_approach_map, get_junction_camera_map
@@ -175,23 +164,13 @@ def build_pipeline_snapshot(
                 queue_length += float(traci_module.lane.getLastStepHaltingNumber(lane_id))
                 waiting_time += float(traci_module.lane.getWaitingTime(lane_id))
                 vehicle_count += float(traci_module.lane.getLastStepVehicleNumber(lane_id))
-                lane_speed_kmh = float(traci_module.lane.getLastStepMeanSpeed(lane_id)) * 3.6
-                lane_vehicle_count = float(traci_module.lane.getLastStepVehicleNumber(lane_id))
-                # Issue #3/#11: If no vehicles on lane, SUMO returns max edge speed.
-                # Treat as 0 speed (no data) instead of misleading high value.
-                if lane_vehicle_count == 0 and lane_speed_kmh > URBAN_SPEED_CAP_KMH:
-                    lane_speed_kmh = 0.0
-                else:
-                    lane_speed_kmh = min(lane_speed_kmh, URBAN_SPEED_CAP_KMH)
-                lane_speeds_kmh.append(lane_speed_kmh)
+                lane_speeds_kmh.append(float(traci_module.lane.getLastStepMeanSpeed(lane_id)) * 3.6)
             except Exception:
                 continue
 
-        # Filter out zero-speed lanes (no vehicles) before averaging
-        nonzero_speeds = [s for s in lane_speeds_kmh if s > 0]
-        avg_speed_kmh = float(np.mean(nonzero_speeds)) if nonzero_speeds else 0.0
+        avg_speed_kmh = float(np.mean(lane_speeds_kmh)) if lane_speeds_kmh else 0.0
         if avg_speed_kmh > 0:
-            global_speeds.extend(nonzero_speeds)
+            global_speeds.extend(lane_speeds_kmh)
 
         current_phase = 0
         phase_count = 4

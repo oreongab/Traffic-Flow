@@ -36,10 +36,12 @@ function indexBarColor(index: number, hasData: boolean): string {
 }
 
 function sourceLabel(source?: string) {
-  if (source === "live-state") return "Live state";
-  if (source === "sumo-live") return "SUMO live";
-  if (source === "db-fallback") return "DB fallback";
-  return source || "unknown";
+  if (source === "live-state") return "YOLO + runtime state";
+  if (source === "real") return "YOLO detection";
+  if (source === "sumo-live") return "จำลองเสมือนจริง + วิเคราะห์สด";
+  if (source === "detection-fallback") return "YOLO fallback";
+  if (source === "db-cache") return "ฐานข้อมูลสำรอง";
+  return source || "runtime analytics";
 }
 
 
@@ -96,9 +98,9 @@ export default function DensityPage() {
         <div className="flex flex-1 pt-14 overflow-hidden">
           <div className="w-96 bg-white border-r border-gray-200 flex flex-col overflow-hidden z-10">
             <div className="px-4 py-3 border-b border-gray-200">
-              <h2 className="text-lg font-bold text-[#1e3a5f]">ระดับความหนาแน่น</h2>
-              <p className="text-xs text-gray-400 mt-0.5">ค่าคำนวณอัปเดตทุก 30 วินาที และตำแหน่งรถอัปเดตต่อเนื่อง</p>
-            </div>
+                <h2 className="text-lg font-bold text-[#1e3a5f]">ระดับความหนาแน่น</h2>
+                <p className="text-xs text-gray-400 mt-0.5">ความหนาแน่นและความเร็วคำนวณจาก YOLO detection และ runtime analytics ที่อัปเดตต่อเนื่อง</p>
+              </div>
             <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="flex justify-center py-20">
@@ -142,7 +144,10 @@ export default function DensityPage() {
                       <div className="flex items-center justify-between mb-1.5">
                         <h3 className="font-semibold text-[#1e3a5f] text-sm truncate">{r.road}</h3>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400">{sourceLabel(r.source)}</span>
+                          <span className="text-[10px] text-gray-400">{r.source_label || sourceLabel(r.source)}</span>
+                          {r.is_fallback && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">fallback</span>
+                          )}
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badgeStyle(r.level)}`}>
                             {r.level}
                           </span>
@@ -163,6 +168,11 @@ export default function DensityPage() {
                         <span>จำนวนรถ {r.has_data === false ? "—" : `${r.vehicle_count} คัน`}</span>
                         <span>ความเร็ว {r.has_data !== false && r.speed > 0 ? `${r.speed.toFixed(0)} km/h` : "ไม่มีข้อมูล"}</span>
                       </div>
+                      {r.metric_source && (
+                        <div className="mt-1 text-[10px] text-gray-400">
+                          metric: {r.metric_source}
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>

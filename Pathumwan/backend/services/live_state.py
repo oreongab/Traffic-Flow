@@ -366,6 +366,8 @@ def get_latest_road_state() -> list[dict[str, object]]:
                 "stopped_vehicle_count": 0,
                 "freshness_seconds": 0.0,
                 "sample_count": 0,
+                "source_counts": {},
+                "partial_observation_count": 0,
             }
         row = road_map[road_id]
         row["vehicle_count"] += int(metric.get("vehicle_count") or 0)
@@ -376,11 +378,27 @@ def get_latest_road_state() -> list[dict[str, object]]:
         row["stopped_vehicle_count"] += int(metric.get("stopped_vehicle_count") or 0)
         row["freshness_seconds"] = max(float(row.get("freshness_seconds") or 0.0), float(metric.get("freshness_seconds") or 0.0))
         row["sample_count"] += 1
+        metric_source = str(metric.get("source") or "unknown")
+        source_counts = row.get("source_counts")
+        if isinstance(source_counts, dict):
+            source_counts[metric_source] = int(source_counts.get(metric_source) or 0) + 1
+        extra_metadata = metric.get("extra_metadata") if isinstance(metric.get("extra_metadata"), dict) else {}
+        if bool(extra_metadata.get("partial_observation")):
+            row["partial_observation_count"] += 1
 
     result: list[dict[str, object]] = []
     for row in road_map.values():
         sample_count = max(1, int(row.pop("sample_count", 1)))
         row["occupancy_ratio"] = float(row["occupancy_ratio"]) / sample_count
         row["avg_speed_kmh"] = float(row["avg_speed_kmh"]) / sample_count
+        source_counts = row.pop("source_counts", {})
+        if isinstance(source_counts, dict) and source_counts:
+            row["source"] = sorted(
+                source_counts.items(),
+                key=lambda item: (-int(item[1] or 0), str(item[0])),
+            )[0][0]
+        else:
+            row["source"] = "unknown"
+        row["partial_observation"] = int(row.pop("partial_observation_count", 0)) > 0
         result.append(row)
     return sorted(result, key=lambda item: str(item.get("road_id") or ""))

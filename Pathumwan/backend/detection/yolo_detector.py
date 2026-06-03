@@ -4,6 +4,7 @@ YOLO Vehicle Detector — wraps Ultralytics YOLO detection models for SUMO CCTV 
 
 import os
 import numpy as np
+from runtime_device import get_torch_device
 
 DEFAULT_YOLO_MODEL = "yolo12n.pt"
 
@@ -25,21 +26,8 @@ def _detect_device() -> tuple[str, bool]:
     where it is a near-free 2× speedup; on CPU/MPS it is left off because
     the gain is small or negative.
     """
-    try:
-        import torch  # type: ignore[import-not-found]
-    except Exception:
-        return "cpu", False
-    try:
-        if torch.cuda.is_available():
-            return "cuda", True
-    except Exception:
-        pass
-    try:
-        if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
-            return "mps", False
-    except Exception:
-        pass
-    return "cpu", False
+    device, use_half, _reason = get_torch_device()
+    return device, use_half
 
 # Vehicle classes in COCO dataset
 VEHICLE_CLASSES = {

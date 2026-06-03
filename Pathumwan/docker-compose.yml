@@ -103,13 +103,13 @@ services:
       context: ./frontend-next
       dockerfile: Dockerfile
       args:
-        # Note: In production you might want this to point to your public domain API
-        NEXT_PUBLIC_API_URL: http://localhost:5000/api
+        NEXT_PUBLIC_API_URL: /api
     container_name: traffixflow_frontend
     ports:
       - "3000:3000"
     environment:
       - PORT=3000
+      - BACKEND_INTERNAL_URL=http://backend:5000
     depends_on:
       - backend
     restart: unless-stopped

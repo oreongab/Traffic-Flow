@@ -14,6 +14,7 @@ import sys
 import os
 import hashlib
 import secrets
+from urllib.parse import urlsplit, urlunsplit
 
 # Fix Windows console encoding
 if sys.platform == "win32":
@@ -176,9 +177,31 @@ def seed_cameras():
 
 
 def main():
+    def _redact_db_uri(uri: str) -> str:
+        if uri.startswith("sqlite"):
+            return uri
+
+        try:
+            parts = urlsplit(uri)
+            if not parts.scheme or not parts.netloc:
+                return "<set>"
+
+            hostname = parts.hostname or ""
+            if parts.port:
+                hostname = f"{hostname}:{parts.port}"
+
+            if parts.username:
+                netloc = f"{parts.username}:***@{hostname}"
+            else:
+                netloc = hostname
+
+            return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+        except Exception:
+            return "<set>"
+
     print("=" * 60)
     print("  TraffixFlow — Database Initialization")
-    print(f"  Database: {Config.DATABASE_URI[:60]}...")
+    print(f"  Database: {_redact_db_uri(Config.DATABASE_URI)}")
     print("=" * 60)
 
     if "--show" in sys.argv:

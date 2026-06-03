@@ -39,7 +39,26 @@ try:
     for rd in _roads_data.get("roads", []):
         _ffs_map[rd["code"]] = rd.get("free_flow_speed_kmh", 50)
 except Exception:
-    pass
+    _roads_data = {"roads": [], "research_targets": []}
+
+
+def _traffic_scope_payload() -> dict[str, object]:
+    targets = _roads_data.get("research_targets", []) if isinstance(_roads_data, dict) else []
+    pathumwan_targets = [
+        target for target in targets
+        if str(target.get("scope") or "pathumwan").strip() != "ratchathewi_feeder"
+    ]
+    feeder_targets = [
+        target for target in targets
+        if str(target.get("scope") or "").strip() == "ratchathewi_feeder"
+    ]
+    return {
+        "monitored_road_count": len(_roads_data.get("roads", [])) if isinstance(_roads_data, dict) else 0,
+        "ai_junction_count": len(targets),
+        "pathumwan_ai_junction_count": len(pathumwan_targets),
+        "ratchathewi_feeder_junction_count": len(feeder_targets),
+        "note": "Traffic Index is road-based; AI signal scope is junction-based.",
+    }
 
 
 def init_traffic_routes(simulation_module):
@@ -95,6 +114,59 @@ def _freshness_seconds(ts_value) -> float:
         return max(0.0, (datetime.now(timezone.utc) - dt).total_seconds())
     except Exception:
         return 0.0
+
+
+def _research_source_label(source: object, metric_source: object = "") -> str:
+    normalized_source = str(source or "unknown")
+    normalized_metric_source = str(metric_source or "")
+    if normalized_source == "real" and normalized_metric_source == "detection-estimate":
+        return "YOLO detection + estimated speed"
+    if normalized_source == "real":
+        return "YOLO detection"
+    if normalized_source == "detection-fallback":
+        return "YOLO fallback"
+    if normalized_source == "camera-yolo":
+        return "YOLO detection primary"
+    if normalized_source == "sumo-live":
+        return "Realistic simulation + analytics"
+    if normalized_source == "db-cache":
+        return "Persisted analytics"
+    if normalized_source == "live-state":
+        return "YOLO + runtime state"
+    return normalized_source
+
+
+def _research_is_fallback(source: object, metric_source: object = "") -> bool:
+    normalized_source = str(source or "")
+    normalized_metric_source = str(metric_source or "")
+    return normalized_source in {"detection-fallback", "db-cache"} or normalized_metric_source in {
+        "detection-estimate",
+        "historical-profile",
+    }
+
+
+def _build_provenance_summary(roads: list[dict[str, object]]) -> dict[str, int]:
+    summary = {
+        "live_detection_roads": 0,
+        "estimated_roads": 0,
+        "fallback_roads": 0,
+        "sumo_roads": 0,
+        "cached_roads": 0,
+    }
+    for road in roads:
+        source = str(road.get("source") or "")
+        metric_source = str(road.get("metric_source") or "")
+        if source in {"real", "camera-yolo"}:
+            summary["live_detection_roads"] += 1
+        if source == "sumo-live":
+            summary["sumo_roads"] += 1
+        if source == "db-cache":
+            summary["cached_roads"] += 1
+        if metric_source == "detection-estimate":
+            summary["estimated_roads"] += 1
+        if _research_is_fallback(source, metric_source):
+            summary["fallback_roads"] += 1
+    return summary
 
 
 def _build_detection_road_data() -> list[dict[str, object]]:
@@ -176,26 +248,36 @@ def _build_live_index_response():
         if not detected:
             return None
         area_idx, road_results = calculate_area_index(detected)
+        mapped_roads = [
+            {
+                "road": rr["road_name"],
+                "index": rr["index"],
+                "speed": rr["avg_speed"],
+                "free_flow_speed": rr["free_flow_speed"],
+                "vehicle_count": rr["vehicle_count"],
+                "detected_vehicle_count": rr.get("vehicle_count", 0),
+                "level": rr.get("level"),
+                "has_data": rr.get("has_data", False),
+                "source": "detection-fallback",
+                "metric_source": "count-estimate",
+                "source_label": _research_source_label("detection-fallback", "count-estimate"),
+                "is_fallback": True,
+            }
+            for rr in road_results
+        ]
         return {
             "status": "ok",
             "index": area_idx,
             "level": get_congestion_level(area_idx),
             "color": get_congestion_color(area_idx),
-            "roads": [
-                {
-                    "road": rr["road_name"],
-                    "index": rr["index"],
-                    "speed": rr["avg_speed"],
-                    "free_flow_speed": rr["free_flow_speed"],
-                    "vehicle_count": rr["vehicle_count"],
-                    "detected_vehicle_count": rr.get("vehicle_count", 0),
-                    "level": rr.get("level"),
-                    "has_data": rr.get("has_data", False),
-                }
-                for rr in road_results
-            ],
+            "roads": mapped_roads,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "source": "detection-fallback",
+            "source_label": _research_source_label("detection-fallback", "count-estimate"),
+            "research_note": "ไม่มี live tracker metric จึงประมาณความเร็ว/ความหนาแน่นจาก YOLO counts ล่าสุด",
+            "provenance_summary": _build_provenance_summary(mapped_roads),
+            "data_available": any(bool(r.get("has_data")) for r in mapped_roads),
+            "scope": _traffic_scope_payload(),
         }
 
     name_map = get_road_name_map()
@@ -229,9 +311,14 @@ def _build_live_index_response():
             "level": rr.get("level"),
             "has_data": rr.get("has_data", False),
             "detected_vehicle_count": rr.get("vehicle_count", 0),
+            "source": str(next((row.get("source") for row in road_data if str(row.get("road_id") or "") == str(rr.get("road_id") or "")), "real")),
+            "metric_source": str(next((row.get("metric_source") for row in road_data if str(row.get("road_id") or "") == str(rr.get("road_id") or "")), "live-detection")),
         }
         for rr in road_results
     ]
+    for road in mapped_roads:
+        road["source_label"] = _research_source_label(road.get("source"), road.get("metric_source"))
+        road["is_fallback"] = _research_is_fallback(road.get("source"), road.get("metric_source"))
     return {
         "status": "ok",
         "index": area_idx,
@@ -240,6 +327,11 @@ def _build_live_index_response():
         "roads": mapped_roads,
         "timestamp": max((_as_timestamp_string(row.get("timestamp")) for row in road_data), default=datetime.now(timezone.utc).isoformat()),
         "source": "live-state",
+        "source_label": "YOLO-driven realtime analytics",
+        "research_note": "ถนนที่มี source = real มาจากกล้องจริงหรือ YOLO-tracker โดยตรง; metric_source = detection-estimate คือยังใช้ counts จริงแล้วประมาณความเร็วเพื่อสร้างดัชนีและความหนาแน่น",
+        "provenance_summary": _build_provenance_summary(mapped_roads),
+        "data_available": any(bool(r.get("has_data")) for r in mapped_roads),
+        "scope": _traffic_scope_payload(),
     }
 
 
@@ -250,27 +342,35 @@ def _build_live_density_response():
         if not detected:
             return None
         area_idx, road_results = calculate_area_index(detected)
+        roads_payload = [
+            {
+                "road": rr["road_name"],
+                "road_id": rr["road_id"],
+                "density": rr["vehicle_count"],
+                "vehicle_count": rr["vehicle_count"],
+                "speed": rr["avg_speed"],
+                "free_flow_speed": rr["free_flow_speed"],
+                "index": rr["index"],
+                "level": rr["level"],
+                "has_data": rr.get("has_data", False),
+                "detected_vehicle_count": rr["vehicle_count"],
+                "travel_time": "-",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "source": "detection-fallback",
+                "metric_source": "count-estimate",
+                "source_label": _research_source_label("detection-fallback", "count-estimate"),
+                "is_fallback": True,
+            }
+            for rr in road_results
+        ]
         return {
             "status": "ok",
-            "roads": [
-                {
-                    "road": rr["road_name"],
-                    "road_id": rr["road_id"],
-                    "density": rr["vehicle_count"],
-                    "vehicle_count": rr["vehicle_count"],
-                    "speed": rr["avg_speed"],
-                    "free_flow_speed": rr["free_flow_speed"],
-                    "index": rr["index"],
-                    "level": rr["level"],
-                    "has_data": rr.get("has_data", False),
-                    "detected_vehicle_count": rr["vehicle_count"],
-                    "travel_time": "-",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "source": "detection-fallback",
-                }
-                for rr in road_results
-            ],
+            "roads": roads_payload,
             "area_index": area_idx,
+            "source": "detection-fallback",
+            "source_label": _research_source_label("detection-fallback", "count-estimate"),
+            "research_note": "ไม่มี live tracker metric จึงใช้ YOLO counts ล่าสุดเป็น fallback เพื่อคำนวณความหนาแน่นและความเร็วโดยประมาณ",
+            "provenance_summary": _build_provenance_summary(roads_payload),
         }
 
     name_map = get_road_name_map()
@@ -304,9 +404,20 @@ def _build_live_density_response():
                 "travel_time": "-",
                 "timestamp": _as_timestamp_string(row.get("timestamp")),
                 "source": row.get("source", "live-state"),
+                "metric_source": row.get("metric_source", "live-detection"),
+                "source_label": _research_source_label(row.get("source", "live-state"), row.get("metric_source", "live-detection")),
+                "is_fallback": _research_is_fallback(row.get("source", "live-state"), row.get("metric_source", "live-detection")),
             }
         )
-    return {"status": "ok", "roads": roads}
+    return {
+        "status": "ok",
+        "roads": roads,
+        "source": "live-state",
+        "source_label": "YOLO-driven realtime analytics",
+        "research_note": "source = real คือ metric จากกล้องจริงหรือ YOLO-tracker; metric_source = detection-estimate คือประมาณความเร็วจาก counts เพื่อให้ได้ภาพรวมความหนาแน่นแบบเรียล",
+        "provenance_summary": _build_provenance_summary(roads),
+        "data_available": any(bool(r.get("has_data")) for r in roads),
+    }
 
 
 def _dominant_light_state(raw_state: object, current_phase: int) -> str:
@@ -391,7 +502,7 @@ def api_traffic_index():
             traci = _sim.get_traci()
             with _sim.sim_lock:
                 road_data = compute_density_from_sumo(traci, _sim.road_mapping)
-            road_data = merge_detection_floor(road_data)
+            road_data = merge_detection_floor(road_data, prefer_detection=True)
             for rd in road_data:
                 rd["road_name"] = name_map.get(rd.get("road_id", ""), rd.get("road_name", rd.get("road_id", "")))
 
@@ -406,6 +517,13 @@ def api_traffic_index():
                     "detected_vehicle_count": rr.get("detected_vehicle_count", 0),
                     "level": rr.get("level"),
                     "has_data": rr.get("has_data", False),
+                    "source": "camera-yolo" if int(rr.get("detected_vehicle_count", 0) or 0) > 0 else "sumo-live",
+                    "metric_source": "yolo-primary" if int(rr.get("detected_vehicle_count", 0) or 0) > 0 else "sumo-direct",
+                    "source_label": _research_source_label(
+                        "camera-yolo" if int(rr.get("detected_vehicle_count", 0) or 0) > 0 else "sumo-live",
+                        "yolo-primary" if int(rr.get("detected_vehicle_count", 0) or 0) > 0 else "sumo-direct",
+                    ),
+                    "is_fallback": False,
                 }
                 for rr in road_results
             ]
@@ -416,12 +534,19 @@ def api_traffic_index():
                 "color": get_congestion_color(area_idx),
                 "roads": mapped_roads,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "source": "sumo-live",
+                "source": "camera-yolo" if any(r.get("source") == "camera-yolo" for r in mapped_roads) else "sumo-live",
+                "source_label": _research_source_label(
+                    "camera-yolo" if any(r.get("source") == "camera-yolo" for r in mapped_roads) else "sumo-live",
+                    "yolo-primary" if any(r.get("source") == "camera-yolo" for r in mapped_roads) else "sumo-direct",
+                ),
+                "research_note": "ใช้ YOLO detection เป็นค่าหลักของจำนวนรถและดัชนี; SUMO ใช้เป็น fallback/บริบทความเร็วเมื่อยังไม่มี detection สด",
+                "provenance_summary": _build_provenance_summary(mapped_roads),
                 "freshness_seconds": 0.0,
                 # True when at least one road actually has live data; lets the
                 # frontend distinguish "0 รถ" (genuinely empty) from
                 # "ไม่มีข้อมูล" (sim not yet producing numbers).
                 "data_available": any(bool(r.get("has_data")) for r in mapped_roads),
+                "scope": _traffic_scope_payload(),
             })
         except Exception:
             pass
@@ -462,6 +587,10 @@ def api_traffic_index():
             "vehicle_count": rd.get("vehicle_count", 0),
             "level": rd.get("level"),
             "has_data": rd.get("has_data", False),
+            "source": rd.get("source", "db-cache"),
+            "metric_source": rd.get("metric_source", "persisted-index"),
+            "source_label": rd.get("source_label") or _research_source_label(rd.get("source", "db-cache"), rd.get("metric_source", "persisted-index")),
+            "is_fallback": bool(rd.get("is_fallback", True)),
         }
         for rd in raw_roads
     ]
@@ -474,8 +603,12 @@ def api_traffic_index():
         "roads": mapped_roads,
         "timestamp": db_timestamp,
         "source": "db-cache",
+        "source_label": _research_source_label("db-cache", "persisted-index"),
+        "research_note": "ค่ามาจากข้อมูล analytics ที่ persist ไว้ในฐานข้อมูล ไม่ใช่ snapshot สดรอบปัจจุบัน",
+        "provenance_summary": _build_provenance_summary(mapped_roads),
         "freshness_seconds": round(_freshness_seconds(db_timestamp), 1),
         "data_available": any(bool(r.get("has_data")) for r in mapped_roads),
+        "scope": _traffic_scope_payload(),
     })
 
 
@@ -507,7 +640,7 @@ def api_road_density():
             with _sim.sim_lock:
                 road_data = compute_density_from_sumo(traci, _sim.road_mapping)
 
-            road_data = merge_detection_floor(road_data)
+            road_data = merge_detection_floor(road_data, prefer_detection=True)
             now_iso = datetime.now(timezone.utc).isoformat()
             roads = []
             for r in road_data:
@@ -531,13 +664,26 @@ def api_road_density():
                     "detected_vehicle_count": r.get("detected_vehicle_count", 0),
                     "travel_time": "-",
                     "timestamp": now_iso,
-                    "source": "sumo-live",
+                    "source": "camera-yolo" if int(r.get("detected_vehicle_count", 0) or 0) > 0 else "sumo-live",
+                    "metric_source": "yolo-primary" if int(r.get("detected_vehicle_count", 0) or 0) > 0 else "sumo-direct",
+                    "source_label": _research_source_label(
+                        "camera-yolo" if int(r.get("detected_vehicle_count", 0) or 0) > 0 else "sumo-live",
+                        "yolo-primary" if int(r.get("detected_vehicle_count", 0) or 0) > 0 else "sumo-direct",
+                    ),
+                    "is_fallback": False,
                     "freshness_seconds": 0.0,
                     "has_data": idx is not None,
                 })
             return jsonify({
                 "status": "ok",
                 "roads": roads,
+                "source": "camera-yolo" if any(r.get("source") == "camera-yolo" for r in roads) else "sumo-live",
+                "source_label": _research_source_label(
+                    "camera-yolo" if any(r.get("source") == "camera-yolo" for r in roads) else "sumo-live",
+                    "yolo-primary" if any(r.get("source") == "camera-yolo" for r in roads) else "sumo-direct",
+                ),
+                "research_note": "ใช้ YOLO detection เป็นค่าหลักของจำนวนรถและความหนาแน่น; SUMO ใช้เป็น fallback/บริบทความเร็วเมื่อยังไม่มี detection สด",
+                "provenance_summary": _build_provenance_summary(roads),
                 "data_available": any(bool(r.get("has_data")) for r in roads),
             })
         except Exception:
@@ -568,6 +714,10 @@ def api_road_density():
             "status": "ok",
             "roads": roads_payload,
             "area_index": area_idx,
+            "source": "detection-fallback",
+            "source_label": _research_source_label("detection-fallback", "count-estimate"),
+            "research_note": "ใช้ YOLO counts ล่าสุดเป็น fallback เพราะยังไม่มี live road state ที่พร้อมสำหรับคำนวณความหนาแน่น",
+            "provenance_summary": _build_provenance_summary(roads_payload),
             "data_available": any(bool(r.get("has_data")) for r in roads_payload),
         })
 
@@ -595,12 +745,19 @@ def api_road_density():
             "travel_time": "-",
             "timestamp": ts,
             "source": "db-cache",
+            "metric_source": "persisted-density",
+            "source_label": _research_source_label("db-cache", "persisted-density"),
+            "is_fallback": True,
             "freshness_seconds": round(_freshness_seconds(ts), 1),
             "has_data": idx is not None,
         })
     return jsonify({
         "status": "ok",
         "roads": roads,
+        "source": "db-cache",
+        "source_label": _research_source_label("db-cache", "persisted-density"),
+        "research_note": "ค่ามาจาก road_density ที่ persist ไว้ในฐานข้อมูลเพื่อใช้อ้างอิงย้อนหลัง",
+        "provenance_summary": _build_provenance_summary(roads),
         "data_available": any(bool(r.get("has_data")) for r in roads),
     })
 
@@ -713,7 +870,7 @@ def _compute_road_geometry():
             except Exception:
                 mapping = {}
 
-    net_file = os.path.join(Config.PROJECT_ROOT, "osm.net.xml")
+    net_file = Config.SUMO_NET_FILE
     try:
         import sumolib
         net = sumolib.net.readNet(net_file, withInternal=False)

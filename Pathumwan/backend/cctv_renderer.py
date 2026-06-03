@@ -10,6 +10,7 @@ detection bounding boxes) are preserved.
 """
 
 import math
+import re
 import time
 import threading
 
@@ -70,6 +71,47 @@ VEHICLE_LABELS = {
 # ── Globals (populated on first use) ──
 _net = None
 _net_lock = threading.Lock()
+
+_TEXT_REPLACEMENTS = {
+    "แยกปทุมวัน": "Pathumwan Junction",
+    "แยกราชประสงค์": "Ratchaprasong Junction",
+    "แยกเฉลิมเผ่า": "Chaloem Phao Junction",
+    "แยกพงษ์พระราม": "Phong Phra Ram Junction",
+    "แยกเจริญผล": "Charoen Phon Junction",
+    "แยกเพลินจิต": "Phloen Chit Junction",
+    "แยกชิดลม": "Chit Lom Junction",
+    "แยกสารสิน": "Sarasin Junction",
+    "แยกจรัสเมือง": "Charat Mueang Junction",
+    "แยกสามย่าน": "Sam Yan Junction",
+    "แยกศาลาแดง": "Sala Daeng Junction",
+    "แยกอังรีดูนังต์": "Henri Dunant Junction",
+    "แยกสะพานเหลือง": "Saphan Lueang Junction",
+    "แยกวิทยุ": "Witthayu Junction",
+    "แยกประตูน้ำ": "Pratunam Junction",
+    "แยกอุรุพงษ์": "Uruphong Junction",
+    "ถนนพระรามที่ 1": "Rama I Road",
+    "ถนนพระรามที่ 4": "Rama IV Road",
+    "ถนนพญาไท": "Phaya Thai Road",
+    "ถนนราชดำริ": "Ratchadamri Road",
+    "ถนนเพลินจิต": "Phloen Chit Road",
+    "ถนนบรรทัดทอง": "Banthat Thong Road",
+    "ถนนเจริญเมือง": "Charoen Mueang Road",
+    "ถนนวิทยุ": "Witthayu Road",
+    "ถนนอังรีดูนังต์": "Henri Dunant Road",
+    "ถนนสารสิน": "Sarasin Road",
+    "ถนนเพชรบุรี": "Phetchaburi Road",
+}
+
+
+def _hud_text(value, fallback=""):
+    text = str(value or "").strip()
+    if not text:
+        return fallback
+    for source, replacement in _TEXT_REPLACEMENTS.items():
+        text = text.replace(source, replacement)
+    text = text.encode("ascii", "ignore").decode("ascii")
+    text = re.sub(r"\s+", " ", text).strip()
+    return text or fallback
 
 
 def _load_network(net_file):
@@ -331,7 +373,7 @@ def _draw_camera_marker(frame, cx, cy, radius, camera_heading):
     cv2.circle(frame, (cam_px, cam_py), range_px, (40, 50, 60), 1, cv2.LINE_AA)
 
 
-def _draw_vehicles(frame, vehicles, cx, cy, radius):
+def _draw_vehicles(frame, vehicles, cx, cy, radius, show_labels=True):
     """Draw vehicles as colored rectangles with direction indicators."""
     img_w, img_h = frame.shape[1], frame.shape[0]
     detection_boxes = []
@@ -393,18 +435,18 @@ def _draw_vehicles(frame, vehicles, cx, cy, radius):
         cv2.arrowedLine(frame, (center_px, center_py), (tip_px, tip_py),
                         (255, 255, 255), 1, cv2.LINE_AA, 0, 0.35)
 
-        # Vehicle label
-        label = VEHICLE_LABELS.get(cls, "")
-        if label:
-            font_scale = 0.32 if len(label) <= 1 else 0.26
-            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
-            cv2.putText(frame, label, (center_px - tw // 2, center_py + th // 2),
-                        cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), 1, cv2.LINE_AA)
+        if show_labels:
+            label = VEHICLE_LABELS.get(cls, "")
+            if label:
+                font_scale = 0.32 if len(label) <= 1 else 0.26
+                (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
+                cv2.putText(frame, label, (center_px - tw // 2, center_py + th // 2),
+                            cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 0, 0), 1, cv2.LINE_AA)
 
-        # Speed label
-        spd_txt = f"{v['speed']:.0f}"
-        cv2.putText(frame, spd_txt, (center_px + 6, center_py - 6),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.3, (214, 220, 228), 1, cv2.LINE_AA)
+            # Speed label
+            spd_txt = f"{v['speed']:.0f}"
+            cv2.putText(frame, spd_txt, (center_px + 6, center_py - 6),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.3, (214, 220, 228), 1, cv2.LINE_AA)
 
         # Build detection box for overlay
         x1 = max(0, int(poly[:, 0].min()) - 4)
@@ -421,7 +463,7 @@ def _draw_vehicles(frame, vehicles, cx, cy, radius):
     return detection_boxes
 
 
-def _draw_detection_overlay(frame, detection_boxes, detector=None):
+def _draw_detection_overlay(frame, detection_boxes, detector=None, show_labels=True):
     """Draw YOLO-style detection bounding boxes."""
     # If a real YOLO detector is provided, try to use it
     if detector and detector.model is not None:
@@ -457,22 +499,24 @@ def _draw_detection_overlay(frame, detection_boxes, detector=None):
         cv2.line(frame, (x2, y2), (x2 - bracket_len, y2), col, 2)
         cv2.line(frame, (x2, y2), (x2, y2 - bracket_len), col, 2)
 
-        # Label
-        label = f'{det["class"]} {det["confidence"]:.0%}'
-        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.38, 1)
-        cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw + 4, y1), col, -1)
-        cv2.putText(frame, label, (x1 + 2, y1 - 4),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.38, (0, 0, 0), 1)
+        if show_labels:
+            label = f'{det["class"]} {det["confidence"]:.0%}'
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.38, 1)
+            cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw + 4, y1), col, -1)
+            cv2.putText(frame, label, (x1 + 2, y1 - 4),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.38, (0, 0, 0), 1)
 
 
 def _draw_cctv_overlay(frame, camera, vehicles, camera_heading, radius):
     """Draw CCTV overlay: camera metadata, GPS anchor, analytics HUD."""
     h, w = frame.shape[:2]
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    cam_name = camera.get("name", "CCTV")
+    raw_name = camera.get("display_name") or camera.get("name") or camera.get("junction") or "CCTV"
+    raw_junction = camera.get("junction") or ""
+    cam_name = _hud_text(raw_name, "CCTV Camera")
     cam_id = str(camera.get("camera_id", camera.get("id", "")))
-    road_name = str(camera.get("road") or "Unknown road")
-    junction_name = str(camera.get("junction") or "")
+    road_name = _hud_text(camera.get("road"), "Unknown road")
+    junction_name = _hud_text(raw_junction, "")
     lat = camera.get("lat")
     lng = camera.get("lng")
     total_vehicles = len(vehicles)
@@ -493,12 +537,13 @@ def _draw_cctv_overlay(frame, camera, vehicles, camera_heading, radius):
 
     # ── Top bar ──
     # Camera name (left)
-    cv2.putText(frame, cam_name, (16, 26),
+    cam_title = cam_name if cam_name.upper().startswith("CCTV") else f"CCTV {cam_name}"
+    cv2.putText(frame, cam_title[:54], (16, 26),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.72, (255, 255, 255), 2, cv2.LINE_AA)
-    cv2.putText(frame, f"CAM {cam_id[:16]}  |  {road_name}", (16, 48),
+    cv2.putText(frame, f"ID {cam_id[:34]}  |  {road_name}"[:78], (16, 48),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.44, HUD_ACCENT, 1, cv2.LINE_AA)
     if junction_name:
-        cv2.putText(frame, f"Junction: {junction_name}", (16, 64),
+        cv2.putText(frame, f"Junction: {junction_name}"[:78], (16, 64),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.38, (218, 223, 229), 1, cv2.LINE_AA)
 
     # Timestamp (right)
@@ -600,7 +645,9 @@ def count_vehicles_near_camera(traci_mod, camera, radius=DEFAULT_RADIUS):
 
 
 def render_cctv_frame(net_file, traci_mod, camera, radius=DEFAULT_RADIUS,
-                      show_detection=False, detector=None):
+                      show_detection=False, detector=None, show_hud=True,
+                      show_camera_marker=True, show_detection_labels=True,
+                      show_vehicle_labels=True):
     """
     Render a CCTV frame for a single camera (top-down satellite analytics view).
 
@@ -623,18 +670,20 @@ def render_cctv_frame(net_file, traci_mod, camera, radius=DEFAULT_RADIUS,
         _draw_junctions(frame, net, cx, cy, radius)
 
     # ── Draw camera marker ──
-    _draw_camera_marker(frame, cx, cy, radius, camera_heading)
+    if show_camera_marker:
+        _draw_camera_marker(frame, cx, cy, radius, camera_heading)
 
     # ── Draw vehicles ──
     vehicles = get_vehicles_near_camera(traci_mod, camera, radius)
-    detection_boxes = _draw_vehicles(frame, vehicles, cx, cy, radius)
+    detection_boxes = _draw_vehicles(frame, vehicles, cx, cy, radius, show_labels=show_vehicle_labels)
 
     # ── YOLO detection overlay ──
     if show_detection:
-        _draw_detection_overlay(frame, detection_boxes, detector)
+        _draw_detection_overlay(frame, detection_boxes, detector, show_labels=show_detection_labels)
 
     # ── HUD Overlays ──
-    _draw_cctv_overlay(frame, camera, vehicles, camera_heading, radius)
+    if show_hud:
+        _draw_cctv_overlay(frame, camera, vehicles, camera_heading, radius)
 
     # ── Encode to JPEG ──
     ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 88])

@@ -9,8 +9,9 @@ import time
 import json
 import base64
 from datetime import datetime, timezone
+from typing import Optional, Tuple
 
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from database.connection import get_session
 from database.models import User
 from config import Config
@@ -23,13 +24,51 @@ def _hash_password(password):
     return (salt + key).hex()
 
 
-def _verify_password(password, stored_hash):
-    """Verify password against stored hash."""
-    stored = bytes.fromhex(stored_hash)
-    salt = stored[:32]
-    stored_key = stored[32:]
-    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100000)
-    return hmac.compare_digest(key, stored_key)
+def _verify_password(password: str, stored_hash: Optional[str]) -> Tuple[bool, Optional[str]]:
+    """Verify password against stored hash.
+
+    Supports the current format: (salt + key).hex() where key is PBKDF2-HMAC-SHA256.
+    Also supports legacy variants where salt length or derived-key length differed.
+
+    Returns (ok, error_code). error_code is only set for "unverifiable" hashes.
+    """
+    if not stored_hash:
+        return False, "missing_hash"
+
+    try:
+        stored = bytes.fromhex(stored_hash)
+    except Exception:
+        # Not hex => we cannot verify with our PBKDF2 scheme.
+        return False, "unsupported_hash_format"
+
+    # We don't know salt length for legacy rows. Try common key lengths.
+    if len(stored) < 16 + 16:
+        return False, "invalid_hash_length"
+
+    password_bytes = password.encode("utf-8")
+    for key_len in (32, 64, 16):
+        if len(stored) <= key_len:
+            continue
+        salt = stored[:-key_len]
+        stored_key = stored[-key_len:]
+        try:
+            derived = hashlib.pbkdf2_hmac(
+                "sha256",
+                password_bytes,
+                salt,
+                100000,
+                dklen=len(stored_key),
+            )
+        except Exception:
+            continue
+        if hmac.compare_digest(derived, stored_key):
+            return True, None
+
+    return False, None
+
+
+def _normalize_identifier(value: str) -> str:
+    return (value or "").strip()
 
 
 def _create_jwt(payload):
@@ -64,19 +103,27 @@ def _decode_jwt(token):
 
 
 def register_user(username, email, password):
-    """Register a new user. Returns (success, message, token)."""
+    """Register a new user.
+
+    Returns (success, message, token, user_info).
+    """
+    username = _normalize_identifier(username)
+    email = _normalize_identifier(email).lower()
+    password = password or ""
+
     if not username or not email or not password:
-        return False, "กรุณากรอกข้อมูลให้ครบถ้วน", None
+        return False, "กรุณากรอกข้อมูลให้ครบถ้วน", None, None
     if len(password) < 6:
-        return False, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", None
+        return False, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", None, None
 
     session = get_session()
     try:
+        username_lower = username.lower()
         existing = session.query(User).filter(
-            or_(User.username == username, User.email == email)
+            or_(func.lower(User.username) == username_lower, func.lower(User.email) == email)
         ).first()
         if existing:
-            return False, "ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้แล้ว", None
+            return False, "ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้แล้ว", None, None
 
         password_hash = _hash_password(password)
         user = User(
@@ -88,21 +135,41 @@ def register_user(username, email, password):
         session.add(user)
         session.commit()
 
-        token = _create_jwt({"user_id": str(user.id), "username": username, "role": "user"})
-        return True, "ลงทะเบียนสำเร็จ", token
+        token = _create_jwt({
+            "user_id": str(user.id),
+            "username": user.username,
+            "role": user.role,
+        })
+        user_info = {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+        }
+        return True, "ลงทะเบียนสำเร็จ", token, user_info
     except Exception as e:
         session.rollback()
-        return False, f"เกิดข้อผิดพลาด: {str(e)}", None
+        return False, f"เกิดข้อผิดพลาด: {str(e)}", None, None
     finally:
         session.close()
 
 
 def login_user(username_or_email, password):
     """Login user. Returns (success, message, token, user_info)."""
+    username_or_email = _normalize_identifier(username_or_email)
+    password = password or ""
+
+    if not username_or_email or not password:
+        return False, "กรุณากรอกข้อมูลให้ครบถ้วน", None, None
+
     session = get_session()
     try:
+        ident = username_or_email
+        ident_lower = ident.lower()
+        # Case-insensitive match for both username and email to avoid
+        # confusing failures when users type different casing.
         user = session.query(User).filter(
-            or_(User.username == username_or_email, User.email == username_or_email)
+            or_(func.lower(User.username) == ident_lower, func.lower(User.email) == ident_lower)
         ).first()
 
         if not user:
@@ -111,7 +178,10 @@ def login_user(username_or_email, password):
         if not user.is_active:
             return False, "บัญชีถูกระงับ", None, None
 
-        if not _verify_password(password, user.password_hash):
+        ok, err = _verify_password(password, user.password_hash)
+        if not ok:
+            if err in ("unsupported_hash_format", "missing_hash", "invalid_hash_length"):
+                return False, "บัญชีนี้ต้องตั้งรหัสผ่านใหม่ (ข้อมูลรหัสผ่านเดิมไม่รองรับ)", None, None
             return False, "รหัสผ่านไม่ถูกต้อง", None, None
 
         token = _create_jwt({
@@ -133,13 +203,17 @@ def login_user(username_or_email, password):
 
 def reset_password(username_or_email, new_password):
     """Reset password. Returns (success, message)."""
+    username_or_email = _normalize_identifier(username_or_email)
+    new_password = new_password or ""
+
     if len(new_password) < 6:
         return False, "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"
 
     session = get_session()
     try:
+        ident_lower = username_or_email.lower()
         user = session.query(User).filter(
-            or_(User.username == username_or_email, User.email == username_or_email)
+            or_(func.lower(User.username) == ident_lower, func.lower(User.email) == ident_lower)
         ).first()
         if not user:
             return False, "ไม่พบบัญชีผู้ใช้"
@@ -175,6 +249,10 @@ def update_user_profile(user_id, updates):
         changed = False
         for key, value in updates.items():
             if key in allowed and value:
+                if key == "email":
+                    value = str(value).strip().lower()
+                else:
+                    value = str(value).strip()
                 setattr(user, key, value)
                 changed = True
 

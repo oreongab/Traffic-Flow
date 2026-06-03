@@ -11,31 +11,183 @@ from services.live_state import get_latest_junction_state
 
 _mode_lock = Lock()
 _signal_mode = "manual"
-_active_ai_algorithm = "PPO"  # Default AI algorithm
+_active_ai_algorithm = Config.AI_ALGORITHM
+_runtime_state_loaded = False
 
 # Most recent AI decision per junction so /admin/ai-status can surface it.
 _ai_decision_lock = Lock()
 _ai_last_decisions: dict[str, dict[str, Any]] = {}
 
+# Recent manual overrides / phase plans, kept in memory instead of persisting
+# to an audit table that the runtime no longer depends on.
+_manual_override_lock = Lock()
+_manual_overrides: dict[str, dict[str, Any]] = {}
+_MANUAL_OVERRIDE_TTL_SECONDS = 600.0
+
+
+def _load_runtime_state_if_needed() -> None:
+    global _runtime_state_loaded, _signal_mode, _active_ai_algorithm
+    if _runtime_state_loaded:
+        return
+
+    try:
+        from database.connection import get_session
+        from database.models import RuntimeConfig
+
+        session = get_session()
+        try:
+            rows = session.query(RuntimeConfig).filter(
+                RuntimeConfig.config_key.in_(["signal_mode", "active_ai_algorithm"])
+            ).all()
+            for row in rows:
+                key = str(row.config_key or "")
+                value = str(row.config_value or "").strip()
+                if key == "signal_mode" and value in {"ai", "manual"}:
+                    _signal_mode = value
+                if key == "active_ai_algorithm" and value:
+                    _active_ai_algorithm = value.upper()
+        finally:
+            session.close()
+    except Exception:
+        pass
+
+    _runtime_state_loaded = True
+
+
+def _persist_runtime_value(key: str, value: str) -> None:
+    try:
+        from database.connection import get_session
+        from database.models import RuntimeConfig
+
+        session = get_session()
+        try:
+            row = session.query(RuntimeConfig).filter(RuntimeConfig.config_key == key).first()
+            if row is None:
+                session.add(RuntimeConfig(config_key=key, config_value=value))
+            else:
+                row.config_value = value
+            session.commit()
+        except Exception:
+            session.rollback()
+        finally:
+            session.close()
+    except Exception:
+        pass
+
+
+def record_manual_override(
+    junction_id: str,
+    *,
+    color: str | None = None,
+    direction: str = "all",
+    phase_durations: list[dict[str, Any]] | None = None,
+) -> None:
+    normalized_junction_id = str(junction_id or "").strip()
+    if not normalized_junction_id:
+        return
+
+    payload: dict[str, Any] = {
+        "updated_at": time.time(),
+        "direction": str(direction or "all").strip().lower() or "all",
+    }
+    if color:
+        payload["color"] = str(color).strip().lower()
+    if phase_durations is not None:
+        payload["phase_durations"] = [
+            {
+                "index": int(item.get("index", 0)),
+                "duration": float(item.get("duration", 0)),
+            }
+            for item in phase_durations
+            if isinstance(item, dict) and "index" in item and "duration" in item
+        ]
+
+    with _manual_override_lock:
+        _manual_overrides[normalized_junction_id] = payload
+
+
+def get_recent_manual_overrides(ttl_seconds: float = _MANUAL_OVERRIDE_TTL_SECONDS) -> dict[str, dict[str, Any]]:
+    now = time.time()
+    active: dict[str, dict[str, Any]] = {}
+    expired: list[str] = []
+
+    with _manual_override_lock:
+        for junction_id, payload in _manual_overrides.items():
+            updated_at = float(payload.get("updated_at") or 0.0)
+            if updated_at <= 0 or (now - updated_at) > ttl_seconds:
+                expired.append(junction_id)
+                continue
+            active[junction_id] = {
+                **payload,
+                "phase_durations": [dict(item) for item in payload.get("phase_durations", []) or []],
+            }
+
+        for junction_id in expired:
+            _manual_overrides.pop(junction_id, None)
+
+    return active
+
+
+def clear_manual_overrides(junction_id: str | None = None) -> None:
+    with _manual_override_lock:
+        if junction_id is None:
+            _manual_overrides.clear()
+            return
+        _manual_overrides.pop(str(junction_id or "").strip(), None)
+
 
 def get_ai_last_decisions() -> list[dict[str, Any]]:
     with _ai_decision_lock:
-        return list(_ai_last_decisions.values())
+        return sorted(
+            _ai_last_decisions.values(),
+            key=lambda item: float(item.get("timestamp") or 0.0),
+            reverse=True,
+        )
 
 
 def record_ai_decisions(decisions: list[dict[str, Any]]) -> None:
     if not decisions:
         return
+
+    try:
+        from services.ai_logger import log_decision_if_changed
+    except Exception:
+        log_decision_if_changed = None
+
     now = time.time()
     with _ai_decision_lock:
         for d in decisions:
             jid = str(d.get("junction_id") or "")
             if not jid:
                 continue
-            _ai_last_decisions[jid] = {**d, "timestamp": now}
+            decision = {**d, "timestamp": now}
+            _ai_last_decisions[jid] = decision
+
+            if log_decision_if_changed is None:
+                continue
+
+            try:
+                phase = int(d.get("phase") if d.get("phase") is not None else d.get("target_phase") or 0)
+                log_decision_if_changed(
+                    junction_id=jid,
+                    phase=phase,
+                    input_data={
+                        "queue_length": float(d.get("queue_length") or 0.0),
+                        "waiting_time": float(d.get("waiting_time") or 0.0),
+                        "avg_speed_kmh": float(d.get("avg_speed_kmh") or 0.0),
+                        "cars": int(d.get("cars") or 0),
+                        "cameras": int(d.get("cameras") or 0),
+                        "current_phase": int(d.get("current_phase") or 0),
+                    },
+                    output=decision,
+                    model_version=str(d.get("algorithm") or d.get("method") or ""),
+                )
+            except Exception:
+                continue
 
 def get_signal_mode() -> str:
     with _mode_lock:
+        _load_runtime_state_if_needed()
         return _signal_mode
 
 def set_signal_mode(mode: str) -> str:
@@ -43,12 +195,17 @@ def set_signal_mode(mode: str) -> str:
     if normalized not in {"ai", "manual"}:
         raise ValueError("Mode must be 'ai' or 'manual'")
     with _mode_lock:
+        _load_runtime_state_if_needed()
         global _signal_mode
         _signal_mode = normalized
+    if normalized == "ai":
+        clear_manual_overrides()
+    _persist_runtime_value("signal_mode", normalized)
     return normalized
 
 def get_active_ai_algorithm() -> str:
     with _mode_lock:
+        _load_runtime_state_if_needed()
         return _active_ai_algorithm
 
 def set_active_ai_algorithm(algorithm: str) -> str:
@@ -57,8 +214,10 @@ def set_active_ai_algorithm(algorithm: str) -> str:
     if normalized not in valid_algorithms:
         raise ValueError(f"Algorithm must be one of {valid_algorithms}")
     with _mode_lock:
+        _load_runtime_state_if_needed()
         global _active_ai_algorithm
         _active_ai_algorithm = normalized
+    _persist_runtime_value("active_ai_algorithm", normalized)
     return normalized
 
 
@@ -121,7 +280,7 @@ class SimSignalController:
         preserved.
         """
         if not self.is_available():
-            raise RuntimeError("Simulation ยังไม่พร้อม")
+            raise RuntimeError("Runtime ควบคุมสัญญาณยังไม่พร้อม")
         traci = self.simulation.get_traci()
         state_map = {"red": "r", "yellow": "y", "green": "G"}
         char = state_map[color]
@@ -201,7 +360,7 @@ class SimSignalController:
 
     def set_phase_plan(self, junction_id: str, phase_durations: list[dict[str, Any]]) -> None:
         if not self.is_available():
-            raise RuntimeError("Simulation ยังไม่พร้อม")
+            raise RuntimeError("Runtime ควบคุมสัญญาณยังไม่พร้อม")
         traci = self.simulation.get_traci()
         with self.simulation.sim_lock:
             programs = traci.trafficlight.getAllProgramLogics(junction_id)
@@ -234,7 +393,7 @@ class SimSignalController:
 
     def apply_ai_actions(self, actions: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not self.is_available():
-            raise RuntimeError("Simulation ยังไม่พร้อม")
+            raise RuntimeError("Runtime ควบคุมสัญญาณยังไม่พร้อม")
         traci = self.simulation.get_traci()
         applied: list[dict[str, Any]] = []
         with self.simulation.sim_lock:

@@ -36,8 +36,11 @@ export default function RegisterPage() {
       router.push("/dashboard");
     } catch (err: unknown) {
       const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data
-          ?.error || "สมัครสมาชิกไม่สำเร็จ";
+        (err as { response?: { data?: { error?: string; message?: string } } })
+          ?.response?.data?.error ||
+        (err as { response?: { data?: { error?: string; message?: string } } })
+          ?.response?.data?.message ||
+        "สมัครสมาชิกไม่สำเร็จ";
       setError(msg);
     } finally {
       setLoading(false);

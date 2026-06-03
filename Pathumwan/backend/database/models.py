@@ -42,8 +42,8 @@ class Camera(Base):
     lat = Column(Float, nullable=False)
     lng = Column(Float, nullable=False)
     junction = Column(String(255), default="")
-    junction_id = Column(String(100), ForeignKey("junctions.junction_id", ondelete="SET NULL"), index=True)
-    sumo_tls_id = Column(String(100), default="")
+    junction_id = Column(String(255), ForeignKey("junctions.junction_id", ondelete="SET NULL"), index=True)
+    sumo_tls_id = Column(String(255), default="")
     status = Column(String(20), default="active")
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 
@@ -75,9 +75,9 @@ class Road(Base):
 class Junction(Base):
     __tablename__ = "junctions"
 
-    junction_id = Column(String(100), primary_key=True)
+    junction_id = Column(String(255), primary_key=True)
     junction_name = Column(String(255), default="")
-    sumo_tls_id = Column(String(100), unique=True, index=True)
+    sumo_tls_id = Column(String(255), unique=True, index=True)
     lat = Column(Float)
     lng = Column(Float)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
@@ -89,7 +89,7 @@ class Approach(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     junction_id = Column(
-        String(100),
+        String(255),
         ForeignKey("junctions.junction_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -170,9 +170,10 @@ class RoadDensity(Base):
 
 class SignalTiming(Base):
     __tablename__ = "signal_timings"
+    __table_args__ = {"info": {"optional_runtime_table": True}}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    junction_id = Column(String(100), ForeignKey("junctions.junction_id"), nullable=False, index=True)
+    junction_id = Column(String(255), ForeignKey("junctions.junction_id"), nullable=False, index=True)
     timestamp = Column(DateTime(timezone=True), default=_utcnow)
     phase_durations = Column(JSON, default=list)
     mode = Column(String(20), default="ai")
@@ -183,7 +184,7 @@ class SignalController(Base):
     __tablename__ = "signal_controllers"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    junction_id = Column(String(100), ForeignKey("junctions.junction_id"), nullable=False, index=True)
+    junction_id = Column(String(255), ForeignKey("junctions.junction_id"), nullable=False, index=True)
     controller_type = Column(String(30), default="mock")
     endpoint = Column(Text, default="")
     auth_config = Column(JSON, default=dict)
@@ -197,7 +198,7 @@ class SignalState(Base):
     __tablename__ = "signal_states"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    junction_id = Column(String(100), ForeignKey("junctions.junction_id"), nullable=False, index=True)
+    junction_id = Column(String(255), ForeignKey("junctions.junction_id"), nullable=False, index=True)
     timestamp = Column(DateTime(timezone=True), default=_utcnow, index=True)
     current_phase = Column(Integer, default=0)
     phase_count = Column(Integer, default=0)
@@ -215,7 +216,7 @@ class AIDecision(Base):
     __tablename__ = "ai_decisions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    junction_id = Column(String(100), ForeignKey("junctions.junction_id"), nullable=False, index=True)
+    junction_id = Column(String(255), ForeignKey("junctions.junction_id"), nullable=False, index=True)
     timestamp = Column(DateTime(timezone=True), default=_utcnow)
     input_data = Column(JSON, default=dict)
     output = Column(JSON, default=dict)
@@ -238,6 +239,7 @@ class HistoricalStats(Base):
 
 class SystemLog(Base):
     __tablename__ = "system_logs"
+    __table_args__ = {"info": {"optional_runtime_table": True}}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime(timezone=True), default=_utcnow, index=True)

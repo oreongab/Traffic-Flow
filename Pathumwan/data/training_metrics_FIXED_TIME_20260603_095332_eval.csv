@@ -1,6 +1,0 @@
-﻿episode,phase,steps,total_waiting_time,vehicle_count,episode_throughput,episode_reward,avg_speed_kmh,avg_queue_length,reward_avg_speed,reward_emergency_penalty,reward_phase_switch,reward_queue_length,reward_throughput,reward_waiting_time
-0,evaluation,3610,203126.0,5506,11904,138.7315,5.23,0.55,90.3,-143.297,-14.5,-1.1862,300.5,-93.0853
-1,evaluation,3610,203126.0,5506,11904,138.7315,5.23,0.55,90.3,-143.297,-14.5,-1.1862,300.5,-93.0853
-2,evaluation,3610,203126.0,5506,11904,138.7315,5.23,0.55,90.3,-143.297,-14.5,-1.1862,300.5,-93.0853
-3,evaluation,3610,203126.0,5506,11904,138.7315,5.23,0.55,90.3,-143.297,-14.5,-1.1862,300.5,-93.0853
-4,evaluation,3610,203126.0,5506,11904,138.7315,5.23,0.55,90.3,-143.297,-14.5,-1.1862,300.5,-93.0853

@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="osm.runtime.net.xml" />
+        <route-files value="osm.dataset.rou.xml.gz" />
+        <additional-files value="osm.poly.xml,output.add.xml" />
+    </input>
+
+    <output>
+        <tripinfo-output value="tripinfos.xml" />
+        <statistic-output value="stats.xml" />
+    </output>
+
+    <time>
+        <begin value="25200" />
+        <end value="64800" />
+        <step-length value="1.0" />
+    </time>
+
+    <processing>
+        <ignore-route-errors value="true" />
+        <time-to-teleport value="300" />
+        <time-to-teleport.highways value="0" />
+        <tls.actuated.jam-threshold value="30" />
+    </processing>
+
+    <routing>
+        <device.rerouting.adaptation-steps value="18" />
+        <device.rerouting.adaptation-interval value="10" />
+    </routing>
+
+    <report>
+        <verbose value="true" />
+        <duration-log.statistics value="true" />
+        <no-step-log value="true" />
+    </report>
+
+    <gui_only>
+        <gui-settings-file value="osm.view.xml" />
+    </gui_only>
+
+</sumoConfiguration>

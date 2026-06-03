@@ -41,6 +41,30 @@ def _load_defined_camera_meta() -> tuple[dict[str, dict[str, Any]], set[str]]:
     return {str(c["id"]): c for c in defined}, {str(c["id"]) for c in defined}
 
 
+def _load_research_targets_by_junction() -> dict[str, dict[str, Any]]:
+    """Load canonical research camera aliases keyed by SUMO TLS/junction id."""
+
+    roads_path = os.path.join(Config.PROJECT_ROOT, "data", "pathumwan_roads.json")
+    if not os.path.exists(roads_path):
+        return {}
+
+    try:
+        with open(roads_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return {}
+
+    result: dict[str, dict[str, Any]] = {}
+    for target in data.get("research_targets", []) or []:
+        if not isinstance(target, dict):
+            continue
+        junction_id = str(target.get("junction_id") or "").strip()
+        camera_id = str(target.get("camera_id") or "").strip()
+        if junction_id and camera_id:
+            result[junction_id] = target
+    return result
+
+
 def sync_live_camera_inventory(camera_points: Iterable[Mapping[str, Any]]) -> None:
     """Upsert the current traffic-light camera inventory and deactivate stale rows."""
 
@@ -189,9 +213,34 @@ def _build_network_camera_inventory() -> list[dict[str, Any]]:
 
     from cctv import _build_fallback_camera_label, _find_matching_camera_def
 
+    research_by_junction = _load_research_targets_by_junction()
     used_defined_ids: set[str] = set()
     cameras: list[dict[str, Any]] = []
     for index, tls in enumerate(tls_points):
+        tls_id = str(tls["tid"])
+        research_target = research_by_junction.get(tls_id)
+        if research_target is not None:
+            cam_id = str(research_target.get("camera_id") or "")
+            used_defined_ids.add(cam_id)
+            cameras.append({
+                "camera_id": cam_id,
+                "name": (
+                    research_target.get("camera_label_th")
+                    or research_target.get("label_th")
+                    or cam_id
+                ),
+                "road": research_target.get("road", tls["street_names"][0] if tls["street_names"] else ""),
+                "junction": (
+                    research_target.get("junction_slug")
+                    or research_target.get("label_th")
+                    or " / ".join(tls["street_names"])
+                ),
+                "lat": float(research_target.get("lat", tls["lat"]) or tls["lat"]),
+                "lng": float(research_target.get("lng", tls["lng"]) or tls["lng"]),
+                "sumo_tls_id": tls_id,
+            })
+            continue
+
         matched = _find_matching_camera_def(float(tls["lat"]), float(tls["lng"]), used_defined_ids)
         if matched is not None:
             cam_id = str(matched.get("id") or "")
@@ -203,10 +252,10 @@ def _build_network_camera_inventory() -> list[dict[str, Any]]:
                 "junction": matched.get("junction", " / ".join(tls["street_names"])),
                 "lat": float(matched.get("lat", tls["lat"])),
                 "lng": float(matched.get("lng", tls["lng"])),
-                "sumo_tls_id": str(tls["tid"]),
+                "sumo_tls_id": tls_id,
             })
         else:
-            fallback = _build_fallback_camera_label(tls["street_names"], str(tls["tid"]), index)
+            fallback = _build_fallback_camera_label(tls["street_names"], tls_id, index)
             cameras.append({
                 "camera_id": fallback["camera_id"],
                 "name": fallback["name"],
@@ -214,7 +263,7 @@ def _build_network_camera_inventory() -> list[dict[str, Any]]:
                 "junction": fallback["junction"],
                 "lat": float(tls["lat"]),
                 "lng": float(tls["lng"]),
-                "sumo_tls_id": str(tls["tid"]),
+                "sumo_tls_id": tls_id,
             })
 
     return cameras

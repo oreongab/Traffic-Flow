@@ -24,8 +24,11 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err: unknown) {
       const msg =
-        (err as { response?: { data?: { error?: string } } })?.response?.data
-          ?.error || "เข้าสู่ระบบไม่สำเร็จ";
+        (err as { response?: { data?: { error?: string; message?: string } } })
+          ?.response?.data?.error ||
+        (err as { response?: { data?: { error?: string; message?: string } } })
+          ?.response?.data?.message ||
+        "เข้าสู่ระบบไม่สำเร็จ";
       setError(msg);
     } finally {
       setLoading(false);
