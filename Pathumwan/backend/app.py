@@ -587,12 +587,15 @@ def _start_signal_apply_loop():
                         continue
 
             if signal_rows:
-                from database.models import SignalState
+                from database.models import SignalState, Junction
 
                 session = get_session()
                 try:
+                    valid_junctions = {str(j[0]) for j in session.query(Junction.id).all()}
                     for row in signal_rows:
                         junction_id = str(row["junction_id"])
+                        if junction_id not in valid_junctions:
+                            continue
                         signature = (
                             f"{row['current_phase']}:{row['phase_count']}:{row['raw_state']}:{int(float(row['next_switch_eta']))}"
                         )

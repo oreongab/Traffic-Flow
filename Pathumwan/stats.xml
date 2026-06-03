@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2026-06-01 10:54:45 by Eclipse SUMO sumo Version 1.18.0
-<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+<!-- generated on 2026-06-03T12:36:36.000749+07:00 by Eclipse SUMO sumo 1.26.0
+<sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
-        <net-file value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../osm.runtime.net.xml"/>
-        <route-files value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../osm.dataset.rou.xml.gz"/>
-        <additional-files value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../osm.poly.xml,/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../output.add.xml"/>
+        <net-file value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\..\osm.runtime.net.xml"/>
+        <route-files value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\..\osm.dataset.rou.xml.gz"/>
+        <additional-files value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\..\osm.poly.xml,C:\src\antigravity\Traffic-Flow\Pathumwan\backend\..\output.add.xml"/>
     </input>
 
     <output>
-        <tripinfo-output value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../tripinfos.xml"/>
-        <statistic-output value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../stats.xml"/>
+        <tripinfo-output value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\..\tripinfos.xml"/>
+        <statistic-output value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\..\stats.xml"/>
     </output>
 
     <time>
@@ -40,14 +40,18 @@
     </report>
 
     <traci_server>
-        <remote-port value="55151"/>
+        <remote-port value="63465"/>
     </traci_server>
 
     <gui_only>
-        <gui-settings-file value="/teamspace/studios/this_studio/Traffic-Flow/Pathumwan/backend/../osm.view.xml"/>
+        <gui-settings-file value="C:\src\antigravity\Traffic-Flow\Pathumwan\backend\..\osm.view.xml"/>
         <quit-on-end value="false"/>
         <start value="true"/>
         <delay value="50"/>
     </gui_only>
 
-</configuration>
+</sumoConfiguration>
+-->
+
+<statistics xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/statistic_file.xsd">
+</statistics>

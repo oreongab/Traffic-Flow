@@ -104,6 +104,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: /api
+        BACKEND_INTERNAL_URL: http://backend:5000
     container_name: traffixflow_frontend
     ports:
       - "3000:3000"
