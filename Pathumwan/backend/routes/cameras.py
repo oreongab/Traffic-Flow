@@ -966,10 +966,31 @@ def api_camera_detect(camera_id):
         )
 
     resolved_camera_id = _resolve_sim_camera_id(camera_id)
-    frame_bytes = _sim.capture_cctv_frame(resolved_camera_id, show_detection=True)
+
+    # Mark as requested so the background loop will start generating detect frames
+    try:
+        _sim.mark_detect_stream_camera(resolved_camera_id)
+    except Exception:
+        pass
+
+    frame_bytes = None
+    try:
+        frame_bytes = _sim.get_cached_detect_frame(resolved_camera_id)
+    except Exception:
+        pass
+
+    # Fallback to normal frame while waiting for background thread to catch up
     if not frame_bytes:
-        frame_bytes = _placeholder_frame(f"กล้อง {resolved_camera_id} ยังไม่พร้อมใช้งาน")
+        try:
+            frame_bytes = _sim.get_cached_frame(resolved_camera_id)
+        except Exception:
+            pass
+
+    if not frame_bytes:
+        frame_bytes = _placeholder_frame(f"กล้อง {resolved_camera_id} กำลังโหลด...")
+        
     return Response(frame_bytes, mimetype="image/jpeg", headers=_media_headers())
+
 
 
 @cameras_bp.route("/<camera_id>/counts")

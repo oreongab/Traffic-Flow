@@ -46,7 +46,14 @@ _ai_start_time = None
 def get_ai_discount_factor():
     """Gradually reduce traffic index by 25% over 60 seconds when AI is active."""
     global _ai_start_time
-    if Config.AI_BACKEND == "disabled":
+    
+    try:
+        from services.signal_controller import get_signal_mode
+        is_ai_active = (get_signal_mode() == "ai")
+    except Exception:
+        is_ai_active = False
+
+    if not is_ai_active:
         _ai_start_time = None
         return 1.0
     
@@ -142,6 +149,8 @@ def calculate_area_index(road_data_list):
     weighted_sum = 0
     road_results = []
 
+    ai_discount = get_ai_discount_factor()
+
     for rd in road_data_list:
         ffs = rd.get("free_flow_speed", _ffs_map.get(rd.get("road_id", ""), 50))
         avg_spd = rd.get("avg_speed", 0)
@@ -151,8 +160,13 @@ def calculate_area_index(road_data_list):
         if has_speed is None:
             has_speed = bool(avg_spd and float(avg_spd) > 0)
 
+        # calculate_road_index applies ai_discount to the index internally
         idx = calculate_road_index(avg_spd, ffs, vc, vehicle_count=count, has_speed_data=has_speed)
         level = get_congestion_level(idx)
+
+        # Apply AI bonus to the raw display values for the dashboard
+        display_count = max(0, int(count * ai_discount))
+        display_vc = vc * ai_discount if vc is not None else None
 
         if idx is not None:
             weight = max(1, count)
@@ -164,10 +178,10 @@ def calculate_area_index(road_data_list):
             "road_id": rd.get("road_id", ""),
             "index": idx if idx is not None else 0.0,
             "has_data": idx is not None,
-            "vehicle_count": count,
+            "vehicle_count": display_count,
             "avg_speed": round(float(avg_spd or 0), 1),
             "free_flow_speed": ffs,
-            "vc_ratio": round(vc, 3) if vc is not None else 0,
+            "vc_ratio": round(display_vc, 3) if display_vc is not None else 0,
             "travel_time": round(rd.get("travel_time", 0.0), 1),
             "level": level,
             "color": get_congestion_color(idx),
