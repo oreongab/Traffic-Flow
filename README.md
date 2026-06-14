@@ -27,7 +27,6 @@ statistics dashboard และระบบควบคุมสัญญาณ�
 - [Environment variables](#environment-variables)
 - [หน้าจอและ API สำคัญ](#หน้าจอและ-api-สำคัญ)
 - [Dataset และ SUMO routes](#dataset-และ-sumo-routes)
-- [ตรวจงานก่อน push ขึ้น GitHub](#ตรวจงานก่อน-push-ขึ้น-github)
 - [Troubleshooting](#troubleshooting)
 - [เอกสารเพิ่มเติม](#เอกสารเพิ่มเติม)
 
@@ -146,8 +145,16 @@ $env:SUMO_HOME = "C:\Program Files (x86)\Eclipse\Sumo"
 
 เหมาะที่สุดสำหรับคนที่ clone โปรเจกต์ใหม่ เพราะได้ backend, frontend และ PostgreSQL พร้อมกัน
 
+สร้างไฟล์ env สำหรับเครื่องตัวเองก่อน:
+
 ```bash
 cd Pathumwan
+cp .env.example .env
+```
+
+เปิด `Pathumwan/.env` แล้วใส่ค่าของเครื่องตัวเองให้ครบ จากนั้นรัน:
+
+```bash
 docker compose up --build
 ```
 
@@ -241,19 +248,24 @@ Next.js จะเรียก API ผ่าน `/api/*` และ `next.config.t
 1. `Pathumwan/backend/.env`
 2. `Pathumwan/.env`
 
-> ห้ามใส่ database password, Neon URI, JWT secret หรือ token จริงลง GitHub
-> ให้เก็บไว้ใน `.env` local หรือ secret manager ของ platform ที่ deploy
+ใน repo มีไฟล์ [Pathumwan/.env.example](Pathumwan/.env.example) เป็นแม่แบบ
+ให้ copy เป็น `Pathumwan/.env` แล้วเติมค่าตามเครื่องที่รัน
 
-ตัวอย่าง `.env` สำหรับ development:
+ค่าที่ใช้บ่อย:
 
 ```env
 FLASK_HOST=0.0.0.0
 FLASK_PORT=5000
 FRONTEND_URL=http://localhost:3000
 
-# ถ้าไม่ตั้ง DATABASE_URI ระบบจะใช้ SQLite fallback
-DATABASE_URI=postgresql://traffix_user:traffix_password@localhost:5432/traffixflow
-# หรือใช้ NEON_DATABASE_URI แทน DATABASE_URI ได้
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_DB=
+JWT_SECRET_KEY=
+
+# ใช้เมื่อรัน backend ต่อ database ภายนอก
+DATABASE_URI=
+# หรือใช้ NEON_DATABASE_URI=
 
 SYSTEM_MODE=sim
 CAMERA_BACKEND=sumo
@@ -370,81 +382,6 @@ use_pack.bat 03_data_1pct build
 
 อ่านเพิ่มที่ [dataset_packs/README.md](dataset_packs/README.md)
 และ [Pathumwan/DATASET_SWITCHING.md](Pathumwan/DATASET_SWITCHING.md)
-
----
-
-## ตรวจงานก่อน push ขึ้น GitHub
-
-รายการนี้ช่วยให้ repo อ่านง่ายและคนอื่น clone ไปรันต่อได้
-
-### 1. เช็กไฟล์ที่ไม่ควร commit
-
-ไม่ควร push ไฟล์เหล่านี้ถ้ามี secret หรือเป็น runtime output:
-
-- `.env` ที่มี credential จริง
-- `node_modules/`
-- `.next/`
-- local database เช่น `*.db`, `*.sqlite`
-- log files เช่น `*.log`
-- model/checkpoint ขนาดใหญ่ที่ไม่ได้ตั้งใจ version control
-
-ตรวจด้วย:
-
-```bash
-git status --short
-```
-
-### 2. เช็ก backend
-
-```bash
-cd Pathumwan/backend
-python -m pip install -r requirements.txt
-python app.py
-```
-
-จากอีก terminal:
-
-```bash
-curl http://localhost:5000/api/health
-```
-
-ถ้ามี `pytest` ใน environment:
-
-```bash
-cd Pathumwan/backend
-python -m pytest tests
-```
-
-### 3. เช็ก frontend
-
-```bash
-cd Pathumwan/frontend-next
-npm install
-npm run lint
-npm run build
-```
-
-### 4. เช็ก Docker
-
-```bash
-cd Pathumwan
-docker compose up --build
-```
-
-แล้วเปิด:
-
-- <http://localhost:3000>
-- <http://localhost:5000/api/health>
-
-### 5. เช็ก README links
-
-บน GitHub ให้กดลิงก์หลักเหล่านี้:
-
-- [Pathumwan/ARCHITECTURE.md](Pathumwan/ARCHITECTURE.md)
-- [Pathumwan/DB_TABLES_REFERENCE.md](Pathumwan/DB_TABLES_REFERENCE.md)
-- [Pathumwan/DB_DIAGRAM.md](Pathumwan/DB_DIAGRAM.md)
-- [Pathumwan/DATASET_SWITCHING.md](Pathumwan/DATASET_SWITCHING.md)
-- [dataset_packs/README.md](dataset_packs/README.md)
 
 ---
 
